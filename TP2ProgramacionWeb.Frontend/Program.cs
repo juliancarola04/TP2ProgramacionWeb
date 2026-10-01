@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,13 @@ try
     // Add services to the container.
     builder.Services.AddRazorComponents()
         .AddInteractiveServerComponents();
+    
+    builder.Services.AddCascadingAuthenticationState();
+    
+    builder.Services.AddScoped<JwtAuthenticationStateProvider>();
+
+    builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+        sp.GetRequiredService<JwtAuthenticationStateProvider>());
 
     
     builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -118,7 +126,7 @@ try
             else
             {
                 logger.LogError(exception,
-                    "Excepción no controlada al procesar {Method} {Path}",
+                    "Excepción no controlada al procesar {exception} {Path}",
                     context.Request.Method, context.Request.Path);
 
                 await context.Response.WriteAsync("\"Ocurrió un error interno en el servidor.\"");
@@ -135,6 +143,7 @@ try
                 return dbEx;
             }
             ex = ex.InnerException;
+            Console.WriteLine(ex.Message);
         }
         return null;
     }
