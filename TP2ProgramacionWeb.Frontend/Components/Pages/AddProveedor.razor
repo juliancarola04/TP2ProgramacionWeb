@@ -1,5 +1,6 @@
 @page "/proveedores"
 @using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.Mvc
 @using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Proveedor
 @using TP2ProgramacionWeb.Frontend.Viewmodel
 @using TP2ProgramacionWeb.Frontend.Services
@@ -93,6 +94,11 @@
     <PropertyColumn Property="p => p.Direccion" Title="Dirección" />
     <PropertyColumn Property="p => p.Email" Title="Email" />
     <PropertyColumn Property="p => p.Telefono" Title="Teléfono" />
+    
+    <TemplateColumn Title="Acciones" Context="proveedor">
+        <button @onclick="() => Editar(proveedor)" class="btn btn-success">Editar</button>
+        <button @onclick="() => Eliminar(proveedor)"class="btn btn-danger">Eliminar</button>
+    </TemplateColumn>
 </QuickGrid>
 
 @code {
@@ -101,26 +107,56 @@
     // Solo se van a mostrar 30.
     private List<ObtenerProveedorResponse> _proveedores = [];
 
+    private int idProveedorEdit = 0;
+
     private string? _mensajeError = null;
 
     private async Task Guardar()
     {
-        CrearProveedorRequest crearProveedorRequest = new CrearProveedorRequest(
-            _proveedorViewModel.RazonSocial,
-            _proveedorViewModel.CUIT,
-            _proveedorViewModel.Direccion,
-            _proveedorViewModel.Email,
-            _proveedorViewModel.Telefono
-        );
-        
-        try
+        if (idProveedorEdit == 0)
         {
-            CrearProveedorResponse crearProveedorResponse = await ProveedorService.Crear(crearProveedorRequest);
-            await CargarProveedores();
+            CrearProveedorRequest crearProveedorRequest = new CrearProveedorRequest(
+                _proveedorViewModel.RazonSocial,
+                _proveedorViewModel.CUIT,
+                _proveedorViewModel.Direccion,
+                _proveedorViewModel.Email,
+                _proveedorViewModel.Telefono
+            );
+            
+            try
+            {
+                CrearProveedorResponse crearProveedorResponse = await ProveedorService.Crear(crearProveedorRequest);
+                await CargarProveedores();
+
+                _proveedorViewModel = new ProveedorViewModel();
+            }
+            catch (Exception ex)
+            {
+                _mensajeError = ex.Message;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            _mensajeError = ex.Message;
+            ActualizarProveedorRequest actualizarProveedorRequest = new ActualizarProveedorRequest(
+                _proveedorViewModel.RazonSocial,
+                _proveedorViewModel.CUIT,
+                _proveedorViewModel.Direccion,
+                _proveedorViewModel.Email,
+                _proveedorViewModel.Telefono
+            );
+
+            try
+            {
+                await ProveedorService.Actualizar(idProveedorEdit, actualizarProveedorRequest);
+                await CargarProveedores();
+                
+                _proveedorViewModel = new ProveedorViewModel();
+                idProveedorEdit = 0;
+            }
+            catch (Exception ex)
+            {
+                _mensajeError = ex.Message;
+            }
         }
     }
 
@@ -135,6 +171,36 @@
         _proveedores = resultado.Datos;
 
 
+    }
+
+    private async Task Editar(ObtenerProveedorResponse proveedor)
+    {
+        idProveedorEdit = proveedor.Id;
+
+        _proveedorViewModel = new ProveedorViewModel
+        {
+            RazonSocial = proveedor.RazonSocial,
+            CUIT = proveedor.Cuit,
+            Direccion = proveedor.Direccion,
+            Email = proveedor.Email,
+            Telefono = proveedor.Telefono
+        };
+    }
+
+    private async Task Eliminar(ObtenerProveedorResponse proveedor)
+    {
+        
+        try
+        {
+            await ProveedorService.DarDeBaja(proveedor.Id);
+            await CargarProveedores();
+
+            _proveedorViewModel = new ProveedorViewModel();
+        }
+        catch (Exception ex)
+        {
+            _mensajeError = ex.Message;
+        }
     }
 
     protected override async Task OnInitializedAsync()
