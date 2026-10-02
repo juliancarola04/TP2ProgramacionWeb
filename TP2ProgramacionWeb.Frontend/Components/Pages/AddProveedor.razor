@@ -88,17 +88,17 @@
 </div>
 
 <QuickGrid Items="_proveedores.AsQueryable()" Class="table">
-    <PropertyColumn Property="p => p.Id" Title="ID" />
-    <PropertyColumn Property="p => p.RazonSocial" Title="Razón social" />
-    <PropertyColumn Property="p => p.Cuit" Title="CUIT" />
-    <PropertyColumn Property="p => p.Direccion" Title="Dirección" />
-    <PropertyColumn Property="p => p.Email" Title="Email" />
-    <PropertyColumn Property="p => p.Telefono" Title="Teléfono" />
+    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="p => p.Id" Title="ID" />
+    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="p => p.RazonSocial" Title="Razón social" />
+    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="p => p.Cuit" Title="CUIT" />
+    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="p => p.Direccion" Title="Dirección" />
+    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="p => p.Email" Title="Email" />
+    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="p => p.Telefono" Title="Teléfono" />
     
-    <TemplateColumn Title="Acciones" Context="proveedor">
+    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Acciones" Context="proveedor">
         <button @onclick="() => Editar(proveedor)" class="btn btn-success">Editar</button>
         <button @onclick="() => Eliminar(proveedor)"class="btn btn-danger">Eliminar</button>
-    </TemplateColumn>
+    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
 </QuickGrid>
 
 @code {

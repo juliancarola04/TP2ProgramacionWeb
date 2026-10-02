@@ -1,0 +1,41 @@
+@page "/productos"
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@rendermode InteractiveServer
+<PageTitle>Gestionar Productos</PageTitle>
+
+<MudGrid>
+    <MudItem xs="12" sm="7">
+        <MudPaper Class="pa-4">
+            <MudForm @ref="_form" @bind-IsValid="@_success" @bind-Errors="@_errors" OnEnterPressed="@(() => _form.ValidateAsync())">
+                <MudTextField T="string" Label="Nombre del producto" Required="true" @bind-Value="_productoViewModel.Nombre" RequiredError="El nombre del producto es requerido." />
+                <MudTextField T="decimal" Label="Precio de compra" Required="true" @bind-Value="_productoViewModel.PrecioCompra" RequiredError="El precio de compra es requerido." />
+                <MudTextField T="decimal" Label="Precio de venta" Required="true" @bind-Value="_productoViewModel.PrecioVenta" RequiredError="El precio de venta es requerido." />
+                <MudTextField T="int" Label="Stock" Required="true" @bind-Value="_productoViewModel.Stock" RequiredError="El stock es requerido."/>
+                
+            </MudForm>
+        </MudPaper>
+        
+        <MudPaper Class="pa-4 mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" OnClick="@(() => _form.ValidateAsync())">Guardar</MudButton>
+        </MudPaper>
+    </MudItem>
+    
+    <MudItem xs="12" sm="5">
+        <MudPaper Class="pa-4 mud-height-full">
+            <MudText Typo="Typo.subtitle2">@($"Errors ({_errors.Length})")</MudText>
+            @foreach (var error in _errors)
+            {
+                <MudText Color="@Color.Error">@error</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private MudForm _form;
+    private bool _success;
+    private string[] _errors = [];
+
+    private ProductoViewModel _productoViewModel = new ();
+}

@@ -84,13 +84,6 @@ namespace TP2ProgramacionWeb.Frontend.Services
         public async Task<ProductoListadoResponse> Crear(CrearProductoRequest dto)
         {
             
-            Categoria? categoria = await _categoriaRepository.ObtenerPorId(dto.CategoriaId);
-
-            if (categoria is null)
-            {
-                throw new RecursoNoExisteException("No existe ninguna categoría con ese id.");
-            }
-            
             if (Validaciones.EstanDatosBien(dto.Nombre) == false)
             {
                 throw new DatosLlegaronErradosException("El nombre del producto es obligatorio.");
@@ -116,8 +109,7 @@ namespace TP2ProgramacionWeb.Frontend.Services
                     Nombre = dto.Nombre,
                     PrecioCompra = dto.PrecioCompra,
                     PrecioVenta = dto.PrecioVenta,
-                    Stock = dto.Stock,
-                    CategoriaId = dto.CategoriaId
+                    Stock = dto.Stock
                 };
 
                 await _repo.Crear(producto);
@@ -155,19 +147,12 @@ namespace TP2ProgramacionWeb.Frontend.Services
                 {
                     throw new RecursoExistenteException("Ya existe un producto con ese nombre.");
                 }
-
-                Categoria? categoria = await _categoriaRepository.ObtenerPorId(dto.CategoriaId);
-
-                if (categoria is null)
-                {
-                    throw new RecursoNoExisteException("No existe ninguna categoría con ese id.");
-                }
+                
 
                 producto.Nombre = dto.Nombre;
                 producto.PrecioCompra = dto.PrecioCompra;
                 producto.PrecioVenta = dto.PrecioVenta;
                 producto.Stock = dto.Stock;
-                producto.CategoriaId = dto.CategoriaId;
 
                 await _repo.Actualizar(producto);
         }

@@ -4,5 +4,4 @@ public record CrearProductoRequest(
     string Nombre,
     decimal PrecioCompra,
     decimal PrecioVenta,
-    int Stock,
-    int CategoriaId);
+    int Stock);
