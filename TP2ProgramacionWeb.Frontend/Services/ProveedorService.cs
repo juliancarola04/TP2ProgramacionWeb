@@ -19,7 +19,7 @@ public class ProveedorService
         _repo = repo;
     }
     
-    public async Task<PaginadoResponse<ObtenerProveedorResponse>> ObtenerTodos(ParametroPaginacionProveedorRequest parametros)
+    public async Task<PaginadoResponse<ObtenerProveedorResponse>?> ObtenerTodos(ParametroPaginacionProveedorRequest parametros)
     {
             int numeroPagina = parametros.NumeroPagina is null || parametros.NumeroPagina < 1
                 ? 1

@@ -1,0 +1,144 @@
+@page "/proveedores"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Proveedor
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.DTO.Proveedor.Request
+@using TP2ProgramacionWeb.Frontend.DTO.Proveedor.Response
+@using TP2ProgramacionWeb.Frontend.Models.ModeloAuxiliar
+@rendermode InteractiveServer
+@inject ProveedorService ProveedorService
+
+<PageTitle>Gestionar Proveedores</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-5">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title text-center">
+                        Proveedor
+                    </h1>
+                    <p class="mb-3 text-center">
+                        Ingresá los datos para registrar un proveedor en el sistema
+                    </p>
+                    
+                    <EditForm Model="@_proveedorViewModel" OnValidSubmit="Guardar">
+                        <DataAnnotationsValidator/>
+                        
+                        
+                        <div class="">
+                            <label class="form-label">
+                                Razon Social
+                            </label>
+                            <InputText class="form-control" @bind-Value="_proveedorViewModel.RazonSocial"/>
+                            <ValidationMessage For="@(() => _proveedorViewModel.RazonSocial)" />
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label">
+                                CUIT
+                            </label>
+                            <InputText class="form-control" @bind-Value="_proveedorViewModel.CUIT"/>
+                            <ValidationMessage For="@(() => _proveedorViewModel.CUIT)" />
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label">
+                                E-Mail
+                            </label>
+                            <InputText class="form-control" @bind-Value="_proveedorViewModel.Email"/>
+                            <ValidationMessage For="@(() => _proveedorViewModel.Email)" />
+                        </div>
+                        
+                        <div class="mt-3">
+                            <label class="form-label">
+                                Telefono
+                            </label>
+                            <InputText class="form-control" @bind-Value="_proveedorViewModel.Telefono"/>
+                            <ValidationMessage For="@(() => _proveedorViewModel.Telefono)" />
+                        </div>
+                        
+                        <div class="mt-3">
+                            <label class="form-label">
+                                Direccion
+                            </label>
+                            <InputText class="form-control" @bind-Value="_proveedorViewModel.Direccion"/>
+                            <ValidationMessage For="@(() => _proveedorViewModel.Direccion)" />
+                        </div>
+
+                        <div class="d-flex justify-content-center">
+                            <button class="btn btn-primary mt-3">
+                                Guardar
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_mensajeError))
+                        {
+                            <p class="text-center text-danger">
+                                @_mensajeError
+                            </p>
+                        }
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<QuickGrid Items="_proveedores.AsQueryable()" Class="table">
+    <PropertyColumn Property="p => p.Id" Title="ID" />
+    <PropertyColumn Property="p => p.RazonSocial" Title="Razón social" />
+    <PropertyColumn Property="p => p.Cuit" Title="CUIT" />
+    <PropertyColumn Property="p => p.Direccion" Title="Dirección" />
+    <PropertyColumn Property="p => p.Email" Title="Email" />
+    <PropertyColumn Property="p => p.Telefono" Title="Teléfono" />
+</QuickGrid>
+
+@code {
+    private ProveedorViewModel _proveedorViewModel = new();
+    
+    // Solo se van a mostrar 30.
+    private List<ObtenerProveedorResponse> _proveedores = [];
+
+    private string? _mensajeError = null;
+
+    private async Task Guardar()
+    {
+        CrearProveedorRequest crearProveedorRequest = new CrearProveedorRequest(
+            _proveedorViewModel.RazonSocial,
+            _proveedorViewModel.CUIT,
+            _proveedorViewModel.Direccion,
+            _proveedorViewModel.Email,
+            _proveedorViewModel.Telefono
+        );
+        
+        try
+        {
+            CrearProveedorResponse crearProveedorResponse = await ProveedorService.Crear(crearProveedorRequest);
+            await CargarProveedores();
+        }
+        catch (Exception ex)
+        {
+            _mensajeError = ex.Message;
+        }
+    }
+
+    private async Task CargarProveedores()
+    {
+        PaginadoResponse<ObtenerProveedorResponse>? resultado = await ProveedorService.ObtenerTodos(new ParametroPaginacionProveedorRequest
+        {
+            NumeroPagina = 1,
+            TamanoPagina = 50
+        });
+
+        _proveedores = resultado.Datos;
+
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarProveedores();
+    }
+}

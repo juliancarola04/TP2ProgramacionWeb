@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
@@ -10,7 +11,6 @@ using Serilog;
 using TP2ProgramacionWeb.Frontend.Components;
 using TP2ProgramacionWeb.Frontend.Data;
 using TP2ProgramacionWeb.Frontend.Implementacion;
-using TP2ProgramacionWeb.Frontend.Options;
 using TP2ProgramacionWeb.Frontend.Repositories;
 using TP2ProgramacionWeb.Frontend.Services;
 
@@ -29,13 +29,9 @@ try
     builder.Services.AddRazorComponents()
         .AddInteractiveServerComponents();
     
-    builder.Services.AddCascadingAuthenticationState();
+    builder.Services.AddAuthorization();
     
-    builder.Services.AddScoped<JwtAuthenticationStateProvider>();
-
-    builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
-        sp.GetRequiredService<JwtAuthenticationStateProvider>());
-
+    builder.Services.AddCascadingAuthenticationState();
     
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
@@ -44,50 +40,16 @@ try
 
     builder.Services.AddDbContext<DataContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-    builder.Services.AddOptions<JwtSettings>()
-        .BindConfiguration("JwtSettings");
-
-    builder.Services.AddScoped<LoginService>();
-    builder.Services.AddScoped<RegisterService>();
+    
     builder.Services.AddScoped<ProductoService>();
-    builder.Services.AddScoped<ImagenService>();
-    builder.Services.AddScoped<UsuarioService>();
     builder.Services.AddScoped<CategoriaService>();
     builder.Services.AddScoped<ProveedorService>();
     builder.Services.AddScoped<IngresoService>();
 
-    builder.Services.AddSingleton<ITokenService, TokenService>();
-    builder.Services.AddScoped<IRegisterRepository, RegisterRepositoryPsqlEF>();
     builder.Services.AddScoped<IProductoRepository, ProductoRepositoryPsqlEF>();
-    builder.Services.AddScoped<IImagenRepository, ImagenRepositoryPsqlEF>();
-    builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
     builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
     builder.Services.AddScoped<IProveedorRepository, ProveedorRepositoryPsqlEF>();
     builder.Services.AddScoped<IIngresoRepository, IngresoRepositoryPsqlEF>();
-    
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer();
-
-    builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-        .Configure<IOptions<JwtSettings>>((options, jwtSettingsOptions) =>
-        {
-            var jwtSettings = jwtSettingsOptions.Value;
-
-            options.MapInboundClaims = false;
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings.Issuer,
-                ValidAudience = jwtSettings.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-                ClockSkew = TimeSpan.Zero
-            };
-        });
-    
     
     var app = builder.Build();
     
@@ -161,7 +123,6 @@ try
 
     app.UseAntiforgery();
     
-    app.UseAuthentication();
     app.UseAuthorization();
 
     app.MapStaticAssets();
