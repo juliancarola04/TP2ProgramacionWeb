@@ -1,12 +1,6 @@
 using System.Data.Common;
-using System.Text;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
@@ -15,6 +9,7 @@ using TP2ProgramacionWeb.Frontend.Data;
 using TP2ProgramacionWeb.Frontend.Implementacion;
 using TP2ProgramacionWeb.Frontend.Repositories;
 using TP2ProgramacionWeb.Frontend.Services;
+using MudBlazor.Services;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -40,15 +35,7 @@ try
         .ReadFrom.Services(services)
         .Enrich.FromLogContext());
     
-    builder.Services.AddMudServices(config =>
-    {
-        config.SnackbarConfiguration.PositionClass =
-            Defaults.Classes.Position.BottomRight;
-        config.SnackbarConfiguration.PreventDuplicates = false;
-        config.SnackbarConfiguration.NewestOnTop = true;
-        config.SnackbarConfiguration.ShowCloseIcon = true;
-        config.SnackbarConfiguration.VisibleStateDuration = 5000;
-    });
+    builder.Services.AddMudServices();
 
     builder.Services.AddDbContext<DataContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));

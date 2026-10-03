@@ -1,24 +1,53 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
 
-<MudThemeProvider />
+<MudThemeProvider IsDarkMode="_darkMode"/>
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
-    </div>
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
 
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>
+<MudLayout>
+    <MudAppBar>
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        TP2 Programación Web
+        <MudIconButton Class="ml-auto" Icon="@Icons.Material.Filled.Brightness3" Color="Color.Inherit" Edge="Edge.Start" OnClick="((e) => DarkModeToggle())"></MudIconButton>
+    </MudAppBar>
+    
+    <MudDrawer @bind-Open="_drawerAbierto">
+        <MudNavMenu>
+            <MudNavLink Href="/" Match="NavLinkMatch.All">
+                Inicio
+            </MudNavLink>
+            <MudNavGroup Title="CRUD" Expanded="true">
+                <MudNavLink Href="/proveedores" Match="NavLinkMatch.Prefix">
+                    Proveedores
+                </MudNavLink>
+                <MudNavLink Href="/productos" Match="NavLinkMatch.Prefix">
+                    Productos
+                </MudNavLink>
+                <MudNavLink Href="/ingresos">
+                    Ingresos
+                </MudNavLink>
+            </MudNavGroup>
+        </MudNavMenu>
+    </MudDrawer>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code
+{
+    bool _drawerAbierto = false;
+    bool _darkMode = true;
+
+    void DrawerToggle()
+    {
+        _drawerAbierto = !_drawerAbierto;
+    }
+
+    void DarkModeToggle()
+    {
+        _darkMode = !_darkMode;
+    }
+}
