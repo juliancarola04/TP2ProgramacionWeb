@@ -1,0 +1,84 @@
+@page "/productos/insert"
+@using TP2ProgramacionWeb.Frontend.DTO.Producto.Request
+@using TP2ProgramacionWeb.Frontend.DTO.Producto.Response
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject ProductoService ProductoService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Insertar productos</PageTitle>
+
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <EditForm Model="@_productoViewModel" OnValidSubmit="OnValidSubmit">
+            <DataAnnotationsValidator/>
+            <MudGrid>
+                <MudItem xs="12" sm="7">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudTextField Label="Nombre" HelperText="Max. 8 characters"
+                                          @bind-Value="_productoViewModel.Nombre" For="@(() => _productoViewModel.Nombre)"/>
+                            <MudTextField Label="Precio Compra" Class="mt-3"
+                                          @bind-Value="_productoViewModel.PrecioCompra" For="@(() => _productoViewModel.PrecioCompra)"/>
+                            <MudTextField Label="Precio Venta" Class="mt-3"
+                                          @bind-Value="_productoViewModel.PrecioVenta" For="@(() => _productoViewModel.PrecioVenta)"/>
+                            <MudTextField Label="Stock" Class="mt-3"
+                                          @bind-Value="_productoViewModel.Stock" HelperText="No es necesario añadirle un stock inicial." For="@(() => _productoViewModel.Stock)"/>
+                        </MudCardContent>
+                        
+                        <MudCardActions>
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Guardar</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+                
+                <MudItem xs="12" sm="5">
+                    <MudPaper Class="pa-4 mud-height-full">
+                        <MudText Typo="Typo.subtitle2">Resumen validaciones</MudText>
+                        @if (exito)
+                        {
+                            <MudText Color="Color.Success">Success</MudText>
+                        }
+                        else
+                        {
+                            <MudText Color="@Color.Error">
+                                <ValidationSummary />
+                            </MudText>
+                            
+                            <MudText Color="@Color.Error">
+                                @_mensajeError
+                            </MudText>
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudContainer>
+</div>
+
+@code {
+    private ProductoViewModel _productoViewModel = new();
+    
+    string _mensajeError;
+    bool exito;
+
+    private async void OnValidSubmit(EditContext editContext)
+    {
+        CrearProductoRequest crearProductoRequest = new CrearProductoRequest(
+            _productoViewModel.Nombre,
+            _productoViewModel.PrecioCompra,
+            _productoViewModel.PrecioVenta,
+            _productoViewModel.Stock
+        );
+            
+        try
+        {
+            await ProductoService.Crear(crearProductoRequest);
+            NavigationManager.NavigateTo("/productos/view");
+        }
+        catch (Exception ex)
+        {
+            _mensajeError = ex.Message;
+        }
+    }
+}

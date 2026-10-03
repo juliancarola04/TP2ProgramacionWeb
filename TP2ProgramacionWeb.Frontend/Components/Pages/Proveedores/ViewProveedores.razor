@@ -1,0 +1,64 @@
+@page "/proveedores/view"
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Proveedor
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject ProveedorService ProveedorService
+
+<PageTitle>Ver proveedores</PageTitle>
+
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudDataGrid T="ProveedorViewModel" ServerData="CargarDatos">
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Id"/>
+                <PropertyColumn Property="x => x.RazonSocial" Title="Razon Social"/>
+                <PropertyColumn Property="x => x.CUIT" Title="CUIT"/>
+                <PropertyColumn Property="x => x.Telefono" Title="Teléfono"/>
+                <PropertyColumn Property="x => x.Direccion" Title="Dirección"/>
+                <PropertyColumn Property="x => x.Email" Title="E-Mail"/>
+            </Columns>
+        </MudDataGrid>
+    </MudContainer>
+</div>
+
+@code {
+
+    private async Task<GridData<ProveedorViewModel>> CargarDatos(GridState<ProveedorViewModel> estado, CancellationToken cancellationToken)
+    {
+        ParametroPaginacionProveedorRequest parametroPaginacionProveedorRequest = new ParametroPaginacionProveedorRequest
+        {
+            NumeroPagina = estado.Page + 1,
+            TamanoPagina = estado.PageSize
+        };
+
+        try
+        {
+            var respuesta = await ProveedorService.ObtenerTodos(parametroPaginacionProveedorRequest);
+
+            var proveedores = respuesta.Datos.Select(p => new ProveedorViewModel()
+            {
+                Id = p.Id,
+                RazonSocial = p.RazonSocial,
+                CUIT = p.Cuit,
+                Telefono = p.Telefono,
+                Direccion = p.Direccion,
+                Email = p.Email
+
+            }).ToList();
+
+            return new GridData<ProveedorViewModel>
+            {
+                Items = proveedores,
+                TotalItems = respuesta.TotalRegistros
+            };
+        }
+        catch (Exception ex)
+        {
+            return new GridData<ProveedorViewModel>
+            {
+                Items = [],
+                TotalItems = 0
+            };
+        }
+    }
+}

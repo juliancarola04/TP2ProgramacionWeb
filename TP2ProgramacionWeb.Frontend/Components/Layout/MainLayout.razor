@@ -9,22 +9,42 @@
 <MudLayout>
     <MudAppBar>
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        TP2 Programación Web
-        <MudIconButton Class="ml-auto" Icon="@Icons.Material.Filled.Brightness3" Color="Color.Inherit" Edge="Edge.Start" OnClick="((e) => DarkModeToggle())"></MudIconButton>
+        <MudSpacer />
+        <MudText Typo="Typo.h5" Align="Align.Center">TP2 Programación Web</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Brightness3" Color="Color.Inherit" Edge="Edge.Start" OnClick="((e) => DarkModeToggle())"></MudIconButton>
     </MudAppBar>
     
-    <MudDrawer @bind-Open="_drawerAbierto">
+    <MudDrawer @bind-Open="_drawerAbierto" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Temporary">
         <MudNavMenu>
             <MudNavLink Href="/" Match="NavLinkMatch.All">
                 Inicio
             </MudNavLink>
             <MudNavGroup Title="CRUD" Expanded="true">
-                <MudNavLink Href="/proveedores" Match="NavLinkMatch.Prefix">
-                    Proveedores
-                </MudNavLink>
-                <MudNavLink Href="/productos" Match="NavLinkMatch.Prefix">
-                    Productos
-                </MudNavLink>
+                <MudNavGroup Title="Proveedores">
+                    <MudNavLink Href="/proveedores/insert" Match="NavLinkMatch.Prefix">
+                        Insertar
+                    </MudNavLink>
+                    <MudNavLink Href="/proveedores/view" Match="NavLinkMatch.Prefix">
+                        Observar
+                    </MudNavLink>
+                </MudNavGroup>
+                <MudNavGroup Title="Categorias">
+                    <MudNavLink Href="/categorias/insert" Match="NavLinkMatch.Prefix">
+                        Insertar
+                    </MudNavLink>
+                    <MudNavLink Href="/categorias/view" Match="NavLinkMatch.Prefix">
+                        Observar
+                    </MudNavLink>
+                </MudNavGroup>
+                <MudNavGroup Title="Productos">
+                    <MudNavLink Href="/productos/insert" Match="NavLinkMatch.Prefix">
+                        Insertar
+                    </MudNavLink>
+                    <MudNavLink Href="/productos/view" Match="NavLinkMatch.Prefix">
+                        Observar
+                    </MudNavLink>
+                </MudNavGroup>
                 <MudNavLink Href="/ingresos">
                     Ingresos
                 </MudNavLink>

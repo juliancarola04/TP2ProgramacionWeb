@@ -1,0 +1,94 @@
+@page "/categorias/insert"
+@using TP2ProgramacionWeb.Frontend.DTO.Categoria.Request
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject CategoriaService CategoriaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Insertar categorías</PageTitle>
+
+<MudOverlay @bind-Visible="_cargando" DarkBackground="true">
+    <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+</MudOverlay>
+
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <EditForm Model="@_categoriaViewModel" OnValidSubmit="OnValidSubmit">
+            <DataAnnotationsValidator/>
+            <MudGrid>
+                <MudItem xs="12" sm="7">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudTextField Label="Nombre" HelperText="Max. 30 caracteres."
+                                          @bind-Value="_categoriaViewModel.Nombre" For="@(() => _categoriaViewModel.Nombre)"/>
+                            <MudTextField Label="Descripcion" HelperText="Max. 600 caracteres." Class="mt-3"
+                                          @bind-Value="_categoriaViewModel.Descripcion" For="@(() => _categoriaViewModel.Descripcion)"/>
+                        </MudCardContent>
+                        
+                        <MudCardActions>
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Guardar</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+                
+                <MudItem xs="12" sm="5">
+                    <MudPaper Class="pa-4 mud-height-full">
+                        <MudText Typo="Typo.subtitle2">Resumen validaciones</MudText>
+                        @if (_exito)
+                        {
+                            <MudText Color="Color.Success">Se pudo guardar con éxito la categoría.</MudText>
+                        }
+                        else
+                        {
+                            <MudText Color="@Color.Error">
+                                <ValidationSummary />
+                            </MudText>
+
+                            if (!string.IsNullOrEmpty(_mensajeError))
+                            {
+                                <MudText Color="@Color.Error">
+                                    @_mensajeError
+                                </MudText>
+                            }
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudContainer>
+</div>
+
+@code {
+    
+    private CategoriaViewModel _categoriaViewModel = new();
+
+    string _mensajeError = "";
+    bool _exito = false;
+    bool _cargando = false;
+
+    private async void OnValidSubmit(EditContext editContext)
+    {
+        CrearCategoriaRequest crearCategoriaRequest = new CrearCategoriaRequest(
+            _categoriaViewModel.Nombre,
+            _categoriaViewModel.Descripcion
+        );
+            try
+            {
+                _cargando = true;
+                await CategoriaService.Crear(crearCategoriaRequest);
+                _exito = true;
+                _mensajeError = "";
+                _categoriaViewModel = new();
+            }
+            catch (Exception ex)
+            {
+                _exito = false;
+                _mensajeError = ex.Message;
+            }
+            finally
+            {
+                _cargando = false;
+                StateHasChanged();
+            }
+    }
+}

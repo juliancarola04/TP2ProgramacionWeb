@@ -1,0 +1,58 @@
+@page "/categorias/view"
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Categoria
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject CategoriaService CategoriaService
+
+<PageTitle>Ver categorías</PageTitle>
+
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudDataGrid T="CategoriaViewModel" ServerData="CargarDatos">
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Id"/>
+                <PropertyColumn Property="x => x.Nombre" Title="Nombre"/>
+                <PropertyColumn Property="x => x.Descripcion" Title="Descripcion"/>
+            </Columns>
+        </MudDataGrid>
+    </MudContainer>
+</div>
+
+@code {
+    private async Task<GridData<CategoriaViewModel>> CargarDatos(GridState<CategoriaViewModel> estado, CancellationToken cancellationToken)
+    {
+        ParametroPaginacionCategoriaRequest parametroPaginacionCategoriaRequest = new ParametroPaginacionCategoriaRequest
+        {
+            NumeroPagina = estado.Page+ 1,
+            TamanoPagina = estado.PageSize
+        };
+
+        try
+        {
+            var respuesta = await CategoriaService.ObtenerTodas(parametroPaginacionCategoriaRequest);
+
+            var categorias = respuesta.Datos.Select(c => new CategoriaViewModel
+            {
+                Id = c.Id,
+                Descripcion = c.Descripcion,
+                Nombre = c.Nombre
+            }).ToList();
+
+            return new GridData<CategoriaViewModel>
+            {
+                Items = categorias,
+                TotalItems = respuesta.TotalRegistros
+            };
+        }
+        catch (Exception ex)
+        {
+            return new GridData<CategoriaViewModel>
+            {
+                Items = [],
+                TotalItems = 0
+            };
+            Console.WriteLine(ex.Message);
+        }
+    }
+    
+}

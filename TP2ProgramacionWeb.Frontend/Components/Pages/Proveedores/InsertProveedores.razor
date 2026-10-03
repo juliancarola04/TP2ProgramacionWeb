@@ -1,0 +1,110 @@
+@page "/proveedores/insert"
+@using TP2ProgramacionWeb.Frontend.DTO.Proveedor.Request
+@using TP2ProgramacionWeb.Frontend.DTO.Proveedor.Response
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject ProveedorService ProveedorService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Insertar proveedores</PageTitle>
+
+<MudOverlay @bind-Visible="_cargando" DarkBackground="true">
+    <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+</MudOverlay>
+
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <EditForm Model="@_proveedorViewModel" OnValidSubmit="OnValidSubmit">
+            <DataAnnotationsValidator/>
+            <MudGrid>
+                <MudItem xs="12" sm="7">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudTextField Label="Razon Social" HelperText="Max. 30 caracteres"
+                                          @bind-Value="_proveedorViewModel.RazonSocial" For="@(() => _proveedorViewModel.RazonSocial)"/>
+                            <MudTextField Label="CUIT" Class="mt-3" HelperText="Max. 13 caracteres"
+                                          @bind-Value="_proveedorViewModel.CUIT" For="@(() => _proveedorViewModel.CUIT)"/>
+                            <MudTextField Label="Telefono" Class="mt-3"
+                                          @bind-Value="_proveedorViewModel.Telefono" HelperText="Formato: 5492954123456" For="@(() => _proveedorViewModel.Telefono)" InputType="InputType.Telephone"/>
+                            <MudTextField Label="Direccion" Class="mt-3" HelperText="Max. 40 caracteres"
+                                          @bind-Value="_proveedorViewModel.Direccion" For="@(() => _proveedorViewModel.Direccion)"/>
+                            <MudTextField Label="Email" Class="mt-3" HelperText="Max. 320 caracteres"
+                                          @bind-Value="_proveedorViewModel.Email" For="@(() => _proveedorViewModel.Email)" InputType="InputType.Email"/>
+                        </MudCardContent>
+                        
+                        <MudCardActions>
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Guardar</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+                
+                <MudItem xs="12" sm="5">
+                    <MudPaper Class="pa-4 mud-height-full">
+                        <MudText Typo="Typo.subtitle2">Resumen validaciones</MudText>
+                        @if (_exito)
+                        {
+                            <MudText Color="Color.Success">Se pudo guardar con éxito la el proveedor.</MudText>
+                        }
+                        else
+                        {
+                            <MudText Color="@Color.Error">
+                                <ValidationSummary />
+                            </MudText>
+
+                            if (!string.IsNullOrEmpty(_mensajeError))
+                            {
+                                <MudText Color="@Color.Error">
+                                    @_mensajeError
+                                </MudText>
+                            }
+                        }
+                    </MudPaper>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        Fill out the form correctly to see the success message.
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudContainer>
+</div>
+@code {
+    private ProveedorViewModel _proveedorViewModel = new();
+
+    string _mensajeError = "";
+    bool _exito = false;
+    bool _cargando = false;
+
+    private async void OnValidSubmit(EditContext editContext)
+    {
+        CrearProveedorRequest crearProveedorRequest = new CrearProveedorRequest(
+            _proveedorViewModel.RazonSocial,
+            _proveedorViewModel.CUIT,
+            _proveedorViewModel.Direccion,
+            _proveedorViewModel.Email,
+            _proveedorViewModel.Telefono
+        );
+            
+        try
+        {
+            _cargando = true;
+            CrearProveedorResponse crearProveedorResponse = await ProveedorService.Crear(crearProveedorRequest);
+            _exito = true;
+            _mensajeError = "";
+
+            _proveedorViewModel = new();
+        }
+        catch (Exception ex)
+        {
+            _exito = false;
+            _mensajeError = ex.Message;
+        }
+        finally
+        {
+            _cargando = false;
+            StateHasChanged();
+        }
+    }
+}
