@@ -1,5 +1,8 @@
 @page "/categorias/view"
+@using System.ComponentModel.DataAnnotations
+@using TP2ProgramacionWeb.Frontend.DTO.Categoria.Request
 @using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Categoria
+@using TP2ProgramacionWeb.Frontend.DTO.Proveedor.Request
 @using TP2ProgramacionWeb.Frontend.Services
 @using TP2ProgramacionWeb.Frontend.Viewmodel
 @inject CategoriaService CategoriaService
@@ -8,17 +11,162 @@
 
 <div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
     <MudContainer MaxWidth="MaxWidth.Large">
-        <MudDataGrid T="CategoriaViewModel" ServerData="CargarDatos">
+        <MudDataGrid
+            @ref="_dataGrid"
+            T="CategoriaViewModel"
+            ServerData="CargarDatos"
+            ReadOnly="false"
+            EditMode="DataGridEditMode.Inline"
+            EditTrigger="DataGridEditTrigger.Manual"
+            StartedEditingItem="EmpezoEditarItem"
+            CanceledEditingItem="CanceloEditarItem"
+            CommittedItemChanges="GuardoEditarItem"
+            Bordered="true"
+            Dense="true"
+            Hover="true">
             <Columns>
-                <PropertyColumn Property="x => x.Id" Title="Id"/>
-                <PropertyColumn Property="x => x.Nombre" Title="Nombre"/>
-                <PropertyColumn Property="x => x.Descripcion" Title="Descripcion"/>
+                <PropertyColumn Property="x => x.Id" Title="Id" Editable="false"/>
+                
+                <PropertyColumn Property="x => x.Nombre" Title="Nombre">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.Nombre"
+                                      For="() => context.Item.Nombre"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.Descripcion" Title="Descripcion">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.Descripcion"
+                                      For="() => context.Item.Descripcion"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                
+                <TemplateColumn>
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                            @if (context.IsEditing)
+                            {
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.Check"
+                                               Color="Color.Success"
+                                               aria-label="Guardar cambios"
+                                               OnClick="@context.Actions.CommitEditingItemAsync" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.Close"
+                                               Color="Color.Error"
+                                               aria-label="Cancelar cambios"
+                                               OnClick="@context.Actions.CancelEditingItemAsync" />
+                            }
+                            else
+                            {
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Outlined.Edit"
+                                               Disabled="@_estaEditando"
+                                               aria-label="Editar fila"
+                                               OnClick="@context.Actions.StartEditingItemAsync" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Outlined.Delete"
+                                               Disabled="@_estaEditando"
+                                               aria-label="Eliminar fila"
+                                               OnClick="@(() => EliminarItem(context.Item))" />
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+                
+                @if (_erroresValidacion.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">
+                        @foreach (var error in _erroresValidacion)
+                        {
+                            <MudText>@error</MudText>
+                        }
+                    </MudAlert>
+                }
             </Columns>
         </MudDataGrid>
     </MudContainer>
 </div>
 
 @code {
+
+    private MudDataGrid<CategoriaViewModel> _dataGrid;
+    private bool _estaEditando = false;
+    private List<string> _erroresValidacion = [];
+
+    
+    private void EmpezoEditarItem(CategoriaViewModel categoriaItem)
+    {
+        _estaEditando = true;
+    }
+
+    private void CanceloEditarItem(CategoriaViewModel categoriaItem)
+    {
+        _estaEditando = false;
+    }
+    
+    private async Task EliminarItem(CategoriaViewModel categoriaItem)
+    {
+        _erroresValidacion.Clear();
+        try
+        {
+            await CategoriaService.Eliminar(categoriaItem.Id);
+            await _dataGrid.ReloadServerData();
+        }
+        catch (Exception ex)
+        {
+            _erroresValidacion = [ex.Message];
+        }
+    }
+    
+    private async Task<DataGridEditFormAction> GuardoEditarItem(CategoriaViewModel categoriaItem)
+    {
+        // Esto lo pongo para obtener las validaciones de los data annotations de los view models
+        _erroresValidacion.Clear();
+        var contexto = new ValidationContext(categoriaItem);
+        var resultados = new List<ValidationResult>();
+
+        bool esValido = Validator.TryValidateObject(
+            categoriaItem,
+            contexto,
+            resultados,
+            validateAllProperties: true
+        );
+
+        if (!esValido)
+        {
+            _erroresValidacion = resultados.Select(r => r.ErrorMessage).ToList();
+            return DataGridEditFormAction.KeepOpen;
+        }
+        
+        try
+        {
+            ActualizarCategoriaRequest actualizarCategoriaRequest = new ActualizarCategoriaRequest
+            (
+                categoriaItem.Nombre,
+                categoriaItem.Descripcion
+            );
+
+            await CategoriaService.Actualizar(categoriaItem.Id, actualizarCategoriaRequest);
+
+            _estaEditando = false;
+            return DataGridEditFormAction.Close;
+        }
+        catch (Exception ex)
+        {
+            _erroresValidacion.Add(ex.Message);
+            return DataGridEditFormAction.KeepOpen;
+        }
+    }
+
+    
     private async Task<GridData<CategoriaViewModel>> CargarDatos(GridState<CategoriaViewModel> estado, CancellationToken cancellationToken)
     {
         ParametroPaginacionCategoriaRequest parametroPaginacionCategoriaRequest = new ParametroPaginacionCategoriaRequest
@@ -51,7 +199,6 @@
                 Items = [],
                 TotalItems = 0
             };
-            Console.WriteLine(ex.Message);
         }
     }
     
