@@ -1,5 +1,7 @@
 @page "/proveedores/view"
+@using System.ComponentModel.DataAnnotations
 @using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Proveedor
+@using TP2ProgramacionWeb.Frontend.DTO.Proveedor.Request
 @using TP2ProgramacionWeb.Frontend.Services
 @using TP2ProgramacionWeb.Frontend.Viewmodel
 @inject ProveedorService ProveedorService
@@ -8,14 +10,122 @@
 
 <div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
     <MudContainer MaxWidth="MaxWidth.Large">
-        <MudDataGrid T="ProveedorViewModel" ServerData="CargarDatos">
+        <MudDataGrid
+            @ref="_dataGrid"
+            T="ProveedorViewModel"
+            ServerData="CargarDatos"
+            ReadOnly="false"
+            EditMode="DataGridEditMode.Inline"
+            EditTrigger="DataGridEditTrigger.Manual"
+            StartedEditingItem="EmpezoEditarItem"
+            CanceledEditingItem="CanceloEditarItem"
+            CommittedItemChanges="GuardoEditarItem"
+            Bordered="true"
+            Dense="true"
+            Hover="true">
+            
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Proveedores</MudText>
+                <MudSpacer/>
+            </ToolBarContent>
+
             <Columns>
-                <PropertyColumn Property="x => x.Id" Title="Id"/>
-                <PropertyColumn Property="x => x.RazonSocial" Title="Razon Social"/>
-                <PropertyColumn Property="x => x.CUIT" Title="CUIT"/>
-                <PropertyColumn Property="x => x.Telefono" Title="Teléfono"/>
-                <PropertyColumn Property="x => x.Direccion" Title="Dirección"/>
-                <PropertyColumn Property="x => x.Email" Title="E-Mail"/>
+                <PropertyColumn Property="x => x.Id" Title="Id" Editable="false"/>
+                
+                <PropertyColumn Property="x => x.RazonSocial" Title="Razon Social">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.RazonSocial"
+                                      For="() => context.Item.RazonSocial"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.CUIT" Title="CUIT">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.CUIT"
+                                      For="() => context.Item.CUIT"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.Telefono" Title="Teléfono">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.Telefono"
+                                      For="() => context.Item.Telefono"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.Direccion" Title="Dirección">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.Direccion"
+                                      For="() => context.Item.Direccion"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.Email" Title="E-Mail">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.Email"
+                                      For="() => context.Item.Email"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+                
+                <TemplateColumn>
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                            @if (context.IsEditing)
+                            {
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.Check"
+                                               Color="Color.Success"
+                                               aria-label="Guardar cambios"
+                                               OnClick="@context.Actions.CommitEditingItemAsync" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.Close"
+                                               Color="Color.Error"
+                                               aria-label="Cancelar cambios"
+                                               OnClick="@context.Actions.CancelEditingItemAsync" />
+                            }
+                            else
+                            {
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Outlined.Edit"
+                                               Disabled="@_estaEditando"
+                                               aria-label="Editar fila"
+                                               OnClick="@context.Actions.StartEditingItemAsync" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Outlined.Delete"
+                                               Disabled="@_estaEditando"
+                                               aria-label="Eliminar fila"
+                                               OnClick="@(() => EliminarItem(context.Item))" />
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+                
+
+                @if (_erroresValidacion.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">
+                        @foreach (var error in _erroresValidacion)
+                        {
+                            <MudText>@error</MudText>
+                        }
+                    </MudAlert>
+                }
             </Columns>
         </MudDataGrid>
     </MudContainer>
@@ -23,6 +133,77 @@
 
 @code {
 
+    private bool _estaEditando = false;
+    private List<string> _erroresValidacion = [];
+    private MudDataGrid<ProveedorViewModel> _dataGrid;
+
+    private void EmpezoEditarItem(ProveedorViewModel proveedorItem)
+    {
+        _estaEditando = true;
+    }
+
+    private void CanceloEditarItem(ProveedorViewModel proveedorItem)
+    {
+        _estaEditando = false;
+    }
+
+    private async Task<DataGridEditFormAction> GuardoEditarItem(ProveedorViewModel proveedorItem)
+    {
+        // Esto lo pongo para obtener las validaciones de los data annotations de los view models
+        _erroresValidacion.Clear();
+        var contexto = new ValidationContext(proveedorItem);
+        var resultados = new List<ValidationResult>();
+
+        bool esValido = Validator.TryValidateObject(
+            proveedorItem,
+            contexto,
+            resultados,
+            validateAllProperties: true
+        );
+
+        if (!esValido)
+        {
+            _erroresValidacion = resultados.Select(r => r.ErrorMessage).ToList();
+            return DataGridEditFormAction.KeepOpen;
+        }
+        
+        try
+        {
+            ActualizarProveedorRequest actualizarProveedorRequest = new ActualizarProveedorRequest
+            (
+                proveedorItem.RazonSocial,
+                proveedorItem.CUIT,
+                proveedorItem.Direccion,
+                proveedorItem.Email,
+                proveedorItem.Telefono
+            );
+
+            await ProveedorService.Actualizar(proveedorItem.Id, actualizarProveedorRequest);
+
+            _estaEditando = false;
+            return DataGridEditFormAction.Close;
+        }
+        catch (Exception ex)
+        {
+            _erroresValidacion.Add(ex.Message);
+            return DataGridEditFormAction.KeepOpen;
+        }
+    }
+
+    private async Task EliminarItem(ProveedorViewModel proveedorViewModel)
+    {
+        _erroresValidacion.Clear();
+        try
+        {
+            await ProveedorService.DarDeBaja(proveedorViewModel.Id);
+            await _dataGrid.ReloadServerData();
+        }
+        catch (Exception ex)
+        {
+            _erroresValidacion = [ex.Message];
+        }
+    }
+    
     private async Task<GridData<ProveedorViewModel>> CargarDatos(GridState<ProveedorViewModel> estado, CancellationToken cancellationToken)
     {
         ParametroPaginacionProveedorRequest parametroPaginacionProveedorRequest = new ParametroPaginacionProveedorRequest
