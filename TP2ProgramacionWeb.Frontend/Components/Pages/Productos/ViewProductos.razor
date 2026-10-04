@@ -1,7 +1,264 @@
 @page "/productos/view"
+@using System.ComponentModel.DataAnnotations
+@using TP2ProgramacionWeb.Frontend.DTO.Categoria.Response
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Categoria
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Producto
+@using TP2ProgramacionWeb.Frontend.DTO.Producto.Request
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject ProductoService ProductoService
+@inject CategoriaService CategoriaService
+@inject ManejadorErroresUi Errores
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Ver productos</PageTitle>
 
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudDataGrid @ref="_dataGrid"
+                     T="ProductoViewModel"
+                     ServerData="CargarDatos"
+                     ReadOnly="false"
+                     EditMode="DataGridEditMode.Inline"
+                     EditTrigger="DataGridEditTrigger.Manual"
+                     StartedEditingItem="EmpezoEditarItem"
+                     CanceledEditingItem="CanceloEditarItem"
+                     CommittedItemChanges="GuardoEditarItem"
+                     SortMode="SortMode.None"
+                     Bordered="true"
+                     Dense="true"
+                     Hover="true">
+
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Productos</MudText>
+                <MudSpacer />
+                <MudTextField T="string" Placeholder="Buscar por nombre" Class="mr-3"
+                              @bind-Value="_buscar"
+                              Immediate="true" DebounceInterval="400"
+                              OnDebounceIntervalElapsed="AlBuscar"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              Margin="Margin.Dense" Variant="Variant.Outlined" />
+                <MudSelect T="int?" Label="Categoría" Clearable="true" Style="min-width: 200px;"
+                           @bind-Value="_filtroCategoriaId" @bind-Value:after="AlCambiarFiltro"
+                           Margin="Margin.Dense" Variant="Variant.Outlined">
+                    @foreach (CategoriaResponse categoria in _categorias)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)categoria.Id)">@categoria.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+            </ToolBarContent>
+
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Id" Editable="false" />
+
+                <PropertyColumn Property="x => x.Nombre" Title="Nombre">
+                    <EditTemplate>
+                        <MudTextField @bind-Value="context.Item.Nombre"
+                                      For="() => context.Item.Nombre"
+                                      MaxLength="60"
+                                      Margin="Margin.Dense"
+                                      Variant="Variant.Text"
+                                      Required="true"
+                                      Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.PrecioCompra" Title="Precio compra" Format="N2">
+                    <EditTemplate>
+                        <MudNumericField T="decimal" @bind-Value="context.Item.PrecioCompra"
+                                         For="() => context.Item.PrecioCompra"
+                                         Min="0" HideSpinButtons="true"
+                                         Margin="Margin.Dense"
+                                         Variant="Variant.Text"
+                                         Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.PrecioVenta" Title="Precio venta" Format="N2">
+                    <EditTemplate>
+                        <MudNumericField T="decimal" @bind-Value="context.Item.PrecioVenta"
+                                         For="() => context.Item.PrecioVenta"
+                                         Min="0" HideSpinButtons="true"
+                                         Margin="Margin.Dense"
+                                         Variant="Variant.Text"
+                                         Immediate="true" />
+                    </EditTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.Stock" Title="Stock" Editable="false" />
+
+                <PropertyColumn Property="x => x.CategoriaNombre" Title="Categoría">
+                    <EditTemplate>
+                        <MudSelect T="int" @bind-Value="context.Item.CategoriaId"
+                                   For="() => context.Item.CategoriaId"
+                                   Margin="Margin.Dense"
+                                   Variant="Variant.Text"
+                                   Required="true">
+                            @foreach (CategoriaResponse categoria in _categorias)
+                            {
+                                <MudSelectItem T="int" Value="@categoria.Id">@categoria.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </EditTemplate>
+                </PropertyColumn>
+
+                <TemplateColumn>
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                            @if (context.IsEditing)
+                            {
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.Check"
+                                               Color="Color.Success"
+                                               aria-label="Guardar cambios"
+                                               OnClick="@context.Actions.CommitEditingItemAsync" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Filled.Close"
+                                               Color="Color.Error"
+                                               aria-label="Cancelar cambios"
+                                               OnClick="@context.Actions.CancelEditingItemAsync" />
+                            }
+                            else
+                            {
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Outlined.Edit"
+                                               Disabled="@_estaEditando"
+                                               aria-label="Editar fila"
+                                               OnClick="@context.Actions.StartEditingItemAsync" />
+                                <MudIconButton Size="Size.Small"
+                                               Icon="@Icons.Material.Outlined.Delete"
+                                               Disabled="@_estaEditando"
+                                               aria-label="Eliminar fila"
+                                               OnClick="@(() => EliminarItem(context.Item))" />
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="ProductoViewModel" PageSizeOptions="@(new int[] { 10, 25, 50 })" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudContainer>
+</div>
+
 @code {
-    
+    private MudDataGrid<ProductoViewModel> _dataGrid = null!;
+    private List<CategoriaResponse> _categorias = [];
+
+    private bool _estaEditando;
+    private string? _buscar;
+    private int? _filtroCategoriaId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var parametros = new ParametroPaginacionCategoriaRequest
+        {
+            NumeroPagina = 1,
+            TamanoPagina = 50 // máximo que permite el servicio
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => CategoriaService.ObtenerTodas(parametros));
+        _categorias = respuesta?.Datos.ToList() ?? [];
+    }
+
+    private void EmpezoEditarItem(ProductoViewModel item) => _estaEditando = true;
+
+    private void CanceloEditarItem(ProductoViewModel item) => _estaEditando = false;
+
+    private async Task AlBuscar(string _) => await RecargarDesdePrimeraPagina();
+
+    private async Task AlCambiarFiltro() => await RecargarDesdePrimeraPagina();
+
+    private async Task RecargarDesdePrimeraPagina()
+    {
+        // Si el filtro deja menos resultados, la página actual podría quedar vacía.
+       // await _dataGrid.NavigateTo(Page.First);
+        await _dataGrid.ReloadServerData();
+    }
+
+    private async Task<DataGridEditFormAction> GuardoEditarItem(ProductoViewModel item)
+    {
+        // Valida los DataAnnotations del ViewModel, igual que en Proveedores y Categorías.
+        var resultados = new List<ValidationResult>();
+        bool esValido = Validator.TryValidateObject(
+            item, new ValidationContext(item), resultados, validateAllProperties: true);
+
+        if (!esValido)
+        {
+            Snackbar.Add(string.Join(" ", resultados.Select(r => r.ErrorMessage)), Severity.Warning);
+            return DataGridEditFormAction.KeepOpen;
+        }
+
+        var request = new ActualizarProductoRequest(
+            item.Nombre, item.PrecioCompra, item.PrecioVenta, item.CategoriaId);
+
+        bool seGuardo = await Errores.EjecutarAsync(
+            () => ProductoService.Actualizar(item.Id, request), "Producto actualizado.");
+
+        if (!seGuardo)
+            return DataGridEditFormAction.KeepOpen;
+
+        // El nombre de la categoría no viaja en el request: lo actualizamos para que la fila no quede desfasada.
+        item.CategoriaNombre = _categorias.FirstOrDefault(c => c.Id == item.CategoriaId)?.Nombre
+                               ?? item.CategoriaNombre;
+
+        _estaEditando = false;
+        return DataGridEditFormAction.Close;
+    }
+
+    private async Task EliminarItem(ProductoViewModel item)
+    {
+        bool? confirmado = await DialogService.ShowMessageBoxAsync(
+            "Eliminar producto",
+            $"¿Querés eliminar \"{item.Nombre}\"? Los ingresos anteriores que lo incluyen se conservan.",
+            yesText: "Eliminar",
+            cancelText: "Cancelar");
+
+        if (confirmado != true)
+            return;
+
+        bool seElimino = await Errores.EjecutarAsync(
+            () => ProductoService.Eliminar(item.Id), "Producto eliminado.");
+
+        if (seElimino)
+            await _dataGrid.ReloadServerData();
+    }
+
+    private async Task<GridData<ProductoViewModel>> CargarDatos(
+        GridState<ProductoViewModel> estado, CancellationToken cancellationToken)
+    {
+        var parametros = new ParametroPaginacionProductoRequest
+        {
+            NumeroPagina = estado.Page + 1,
+            TamanoPagina = estado.PageSize,
+            Buscar = _buscar,
+            CategoriaId = _filtroCategoriaId
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => ProductoService.ObtenerTodos(parametros));
+
+        if (respuesta is null)
+            return new GridData<ProductoViewModel> { Items = [], TotalItems = 0 };
+
+        var productos = respuesta.Datos.Select(p => new ProductoViewModel
+        {
+            Id = p.Id,
+            Nombre = p.Nombre,
+            PrecioCompra = p.PrecioCompra,
+            PrecioVenta = p.PrecioVenta,
+            Stock = p.Stock,
+            CategoriaId = p.CategoriaId,
+            CategoriaNombre = p.CategoriaNombre
+        }).ToList();
+
+        return new GridData<ProductoViewModel>
+        {
+            Items = productos,
+            TotalItems = respuesta.TotalRegistros
+        };
+    }
 }
