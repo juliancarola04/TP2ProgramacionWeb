@@ -59,7 +59,8 @@ namespace TP2ProgramacionWeb.Frontend.Implementacion
 
         public async Task<bool> ExistePorNombre(string nombre)
         {
-            return await _dataContext.Productos.AnyAsync(p => p.Nombre == nombre);
+            string n = nombre.ToLower();
+            return await _dataContext.Productos.AnyAsync(p => p.Nombre.ToLower() == n);
         }
 
         public async Task<bool> Existe(int id)
@@ -75,14 +76,8 @@ namespace TP2ProgramacionWeb.Frontend.Implementacion
 
         public async Task Actualizar(Producto producto)
         {
-            _dataContext.Productos.Update(producto);
             await _dataContext.SaveChangesAsync();
         }
 
-        public async Task Eliminar(Producto producto)
-        {
-            _dataContext.Productos.Remove(producto);
-            await _dataContext.SaveChangesAsync();
-        }
     }
 }

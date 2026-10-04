@@ -4,4 +4,4 @@ public record ActualizarProductoRequest(
     string Nombre,
     decimal PrecioCompra,
     decimal PrecioVenta,
-    int Stock);
+    int CategoriaId);
