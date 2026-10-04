@@ -12,6 +12,5 @@ namespace TP2ProgramacionWeb.Frontend.Repositories
         Task<bool> Existe(int id);
         Task Crear(Producto producto);
         Task Actualizar(Producto producto);
-        Task Eliminar(Producto producto);
     }
 }

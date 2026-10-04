@@ -1,52 +1,82 @@
 @page "/productos/insert"
+@using TP2ProgramacionWeb.Frontend.DTO.Categoria.Response
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Categoria
 @using TP2ProgramacionWeb.Frontend.DTO.Producto.Request
-@using TP2ProgramacionWeb.Frontend.DTO.Producto.Response
 @using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
 @using TP2ProgramacionWeb.Frontend.Viewmodel
 @inject ProductoService ProductoService
-@inject NavigationManager NavigationManager
+@inject CategoriaService CategoriaService
+@inject ManejadorErroresUi Errores
 
 <PageTitle>Insertar productos</PageTitle>
 
 <div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
     <MudContainer MaxWidth="MaxWidth.Medium">
         <EditForm Model="@_productoViewModel" OnValidSubmit="OnValidSubmit">
-            <DataAnnotationsValidator/>
+            <DataAnnotationsValidator />
             <MudGrid>
                 <MudItem xs="12" sm="7">
                     <MudCard>
                         <MudCardContent>
-                            <MudTextField Label="Nombre" HelperText="Max. 8 characters"
-                                          @bind-Value="_productoViewModel.Nombre" For="@(() => _productoViewModel.Nombre)"/>
-                            <MudTextField Label="Precio Compra" Class="mt-3"
-                                          @bind-Value="_productoViewModel.PrecioCompra" For="@(() => _productoViewModel.PrecioCompra)"/>
-                            <MudTextField Label="Precio Venta" Class="mt-3"
-                                          @bind-Value="_productoViewModel.PrecioVenta" For="@(() => _productoViewModel.PrecioVenta)"/>
-                            <MudTextField Label="Stock" Class="mt-3"
-                                          @bind-Value="_productoViewModel.Stock" HelperText="No es necesario añadirle un stock inicial." For="@(() => _productoViewModel.Stock)"/>
+                            <MudTextField Label="Nombre" HelperText="Max. 60 caracteres" MaxLength="60"
+                                          @bind-Value="_productoViewModel.Nombre"
+                                          For="@(() => _productoViewModel.Nombre)" />
+
+                            <MudSelect T="int" Label="Categoría" Class="mt-3"
+                                       @bind-Value="_productoViewModel.CategoriaId"
+                                       For="@(() => _productoViewModel.CategoriaId)"
+                                       Disabled="@(_categorias.Count == 0)">
+                                @foreach (CategoriaResponse categoria in _categorias)
+                                {
+                                    <MudSelectItem T="int" Value="@categoria.Id">@categoria.Nombre</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            <MudNumericField T="decimal" Label="Precio Compra" Class="mt-3"
+                                             Min="0" HideSpinButtons="true"
+                                             Adornment="Adornment.Start" AdornmentText="$"
+                                             HelperText="Se actualiza solo con cada ingreso de stock."
+                                             @bind-Value="_productoViewModel.PrecioCompra"
+                                             For="@(() => _productoViewModel.PrecioCompra)" />
+
+                            <MudNumericField T="decimal" Label="Precio Venta" Class="mt-3"
+                                             Min="0" HideSpinButtons="true"
+                                             Adornment="Adornment.Start" AdornmentText="$"
+                                             @bind-Value="_productoViewModel.PrecioVenta"
+                                             For="@(() => _productoViewModel.PrecioVenta)" />
                         </MudCardContent>
-                        
+
                         <MudCardActions>
-                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Guardar</MudButton>
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                                       Class="ml-auto" Disabled="@(_guardando || _categorias.Count == 0)">
+                                Guardar
+                            </MudButton>
                         </MudCardActions>
                     </MudCard>
                 </MudItem>
-                
+
                 <MudItem xs="12" sm="5">
                     <MudPaper Class="pa-4 mud-height-full">
                         <MudText Typo="Typo.subtitle2">Resumen validaciones</MudText>
-                        @if (exito)
+
+                        @if (!_cargandoCategorias && _categorias.Count == 0)
                         {
-                            <MudText Color="Color.Success">Success</MudText>
+                            <MudAlert Severity="Severity.Info" Class="mt-2">
+                                No hay categorías cargadas. Creá una en
+                                <MudLink Href="/categorias/insert">Categorías → Insertar</MudLink>
+                                antes de agregar productos.
+                            </MudAlert>
+                        }
+
+                        @if (_exito)
+                        {
+                            <MudText Color="Color.Success">Se guardó el producto con éxito.</MudText>
                         }
                         else
                         {
-                            <MudText Color="@Color.Error">
+                            <MudText Color="Color.Error">
                                 <ValidationSummary />
-                            </MudText>
-                            
-                            <MudText Color="@Color.Error">
-                                @_mensajeError
                             </MudText>
                         }
                     </MudPaper>
@@ -58,27 +88,45 @@
 
 @code {
     private ProductoViewModel _productoViewModel = new();
-    
-    string _mensajeError;
-    bool exito;
+    private List<CategoriaResponse> _categorias = [];
 
-    private async void OnValidSubmit(EditContext editContext)
+    private bool _exito;
+    private bool _guardando;
+    private bool _cargandoCategorias = true;
+
+    protected override async Task OnInitializedAsync()
     {
-        CrearProductoRequest crearProductoRequest = new CrearProductoRequest(
+        var parametros = new ParametroPaginacionCategoriaRequest
+        {
+            NumeroPagina = 1,
+            TamanoPagina = 50 // máximo que permite el servicio
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => CategoriaService.ObtenerTodas(parametros));
+        _categorias = respuesta?.Datos.ToList() ?? [];
+        _cargandoCategorias = false;
+    }
+
+    private async Task OnValidSubmit(EditContext editContext)
+    {
+        _guardando = true;
+        _exito = false;
+
+        CrearProductoRequest request = new CrearProductoRequest(
             _productoViewModel.Nombre,
             _productoViewModel.PrecioCompra,
             _productoViewModel.PrecioVenta,
-            _productoViewModel.Stock
+            _productoViewModel.CategoriaId
         );
-            
-        try
+
+        bool seGuardo = await Errores.EjecutarAsync(() => ProductoService.Crear(request));
+
+        if (seGuardo)
         {
-            await ProductoService.Crear(crearProductoRequest);
-            NavigationManager.NavigateTo("/productos/view");
+            _exito = true;
+            _productoViewModel = new(); // limpia el formulario para cargar otro
         }
-        catch (Exception ex)
-        {
-            _mensajeError = ex.Message;
-        }
+
+        _guardando = false;
     }
 }

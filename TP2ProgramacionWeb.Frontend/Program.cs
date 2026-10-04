@@ -1,15 +1,16 @@
-using System.Data.Common;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using MudBlazor.Services;
+using MudBlazor.Services;
 using Serilog;
+using System.Data.Common;
 using TP2ProgramacionWeb.Frontend.Components;
 using TP2ProgramacionWeb.Frontend.Data;
 using TP2ProgramacionWeb.Frontend.Implementacion;
 using TP2ProgramacionWeb.Frontend.Repositories;
 using TP2ProgramacionWeb.Frontend.Services;
-using MudBlazor.Services;
+using TP2ProgramacionWeb.Frontend.Utilidades;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -33,8 +34,9 @@ try
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
-        .Enrich.FromLogContext());
-    
+        .Enrich.FromLogContext()
+        .WriteTo.Console());
+
     builder.Services.AddMudServices();
 
     builder.Services.AddDbContext<DataContext>(options =>
@@ -44,6 +46,7 @@ try
     builder.Services.AddScoped<CategoriaService>();
     builder.Services.AddScoped<ProveedorService>();
     builder.Services.AddScoped<IngresoService>();
+    builder.Services.AddScoped<ManejadorErroresUi>();
 
     builder.Services.AddScoped<IProductoRepository, ProductoRepositoryPsqlEF>();
     builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();

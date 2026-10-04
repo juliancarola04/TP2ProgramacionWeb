@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TP2ProgramacionWeb.Frontend.Data;
@@ -11,9 +12,11 @@ using TP2ProgramacionWeb.Frontend.Data;
 namespace TP2ProgramacionWeb.Frontend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20261004202534_ProductoEliminado")]
+    partial class ProductoEliminado
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -149,9 +152,6 @@ namespace TP2ProgramacionWeb.Frontend.Migrations
 
                     b.Property<int>("CategoriaId")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("Eliminado")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Nombre")
                         .IsRequired()

@@ -1,4 +1,5 @@
-﻿using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Producto;
+﻿using TP2ProgramacionWeb.Frontend.DTO.Categoria.Response;
+using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Producto;
 using TP2ProgramacionWeb.Frontend.DTO.Producto.Request;
 using TP2ProgramacionWeb.Frontend.DTO.Producto.Response;
 using TP2ProgramacionWeb.Frontend.Excepciones;
@@ -56,11 +57,11 @@ namespace TP2ProgramacionWeb.Frontend.Services
 
                 PaginadoResponse<Producto> resultado = await _repo.ObtenerTodos(productoQueryParametros);
 
-                List<ProductoListadoResponse> productos = resultado.Datos.Select(p => new ProductoListadoResponse(
-                    p.Id, p.Nombre, p.PrecioCompra, p.PrecioVenta, p.Stock, p.CategoriaId
-                )).ToList();
+            List<ProductoListadoResponse> productos = resultado.Datos.Select(p => new ProductoListadoResponse(
+                p.Id, p.Nombre, p.PrecioCompra, p.PrecioVenta, p.Stock, p.CategoriaId, p.Categoria.Nombre
+            )).ToList();
 
-                return new PaginadoResponse<ProductoListadoResponse>(
+            return new PaginadoResponse<ProductoListadoResponse>(
                     productos,
                     resultado.NumeroPagina,
                     resultado.TamanoPagina,
@@ -83,91 +84,70 @@ namespace TP2ProgramacionWeb.Frontend.Services
 
         public async Task<ProductoListadoResponse> Crear(CrearProductoRequest dto)
         {
-            
-            if (Validaciones.EstanDatosBien(dto.Nombre) == false)
-            {
+            if (!Validaciones.EstanDatosBien(dto.Nombre))
                 throw new DatosLlegaronErradosException("El nombre del producto es obligatorio.");
-            }
 
-            if (Validaciones.EstanDatosBien(dto.PrecioCompra, dto.PrecioVenta, dto.Stock) == false)
+            if (dto.PrecioCompra < 0 || dto.PrecioVenta < 0)
+                throw new DatosLlegaronErradosException("Los precios no pueden ser negativos.");
+
+            Categoria? categoria = await _categoriaRepository.ObtenerPorId(dto.CategoriaId);
+            if (categoria is null)
+                throw new RecursoNoExisteException("La categoría seleccionada no existe.");
+
+            if (await _repo.ExistePorNombre(dto.Nombre.Trim()))
+                throw new RecursoExistenteException("Ya existe un producto con ese nombre.");
+
+            Producto producto = new Producto
             {
-                throw new DatosLlegaronErradosException("Tanto el precio de compra, como el de venta y del stock son obligatorios");
-            }
+                Nombre = dto.Nombre.Trim(),
+                PrecioCompra = dto.PrecioCompra,
+                PrecioVenta = dto.PrecioVenta,
+                Stock = 0,                       // el stock solo lo mueven los ingresos
+                CategoriaId = categoria.Id
+            };
 
-            if (dto.PrecioVenta < 0 || dto.PrecioCompra < 0 || dto.Stock < 0)
-            {
-                throw new DatosLlegaronErradosException("Tanto el precio de compra, como el de venta y del stock no pueden ser negativos");
-            }
+            await _repo.Crear(producto);
 
-                if (await _repo.ExistePorNombre(dto.Nombre))
-                {
-                    throw new RecursoExistenteException("Ya existe un producto con ese nombre.");
-                }
-
-                Producto producto = new Producto
-                {
-                    Nombre = dto.Nombre,
-                    PrecioCompra = dto.PrecioCompra,
-                    PrecioVenta = dto.PrecioVenta,
-                    Stock = dto.Stock
-                };
-
-                await _repo.Crear(producto);
-
-                return new ProductoListadoResponse(
-                    producto.Id, producto.Nombre, producto.PrecioCompra,
-                    producto.PrecioVenta, producto.Stock, producto.CategoriaId);
+            return new ProductoListadoResponse(producto.Id, producto.Nombre, producto.PrecioCompra,
+                producto.PrecioVenta, producto.Stock, producto.CategoriaId, categoria.Nombre);
         }
 
         public async Task Actualizar(int id, ActualizarProductoRequest dto)
         {
-            if (Validaciones.EstanDatosBien(dto.Nombre) == false)
-            {
+            if (!Validaciones.EstanDatosBien(dto.Nombre))
                 throw new DatosLlegaronErradosException("El nombre del producto es obligatorio.");
-            }
-            
-            if (Validaciones.EstanDatosBien(dto.PrecioCompra, dto.PrecioVenta, dto.Stock) == false)
-            {
-                throw new DatosLlegaronErradosException("Tanto el precio de compra, como el de venta y del stock son obligatorios");
-            }
 
-            if (dto.PrecioVenta < 0 || dto.PrecioCompra < 0 || dto.Stock < 0)
-            {
-                throw new DatosLlegaronErradosException("Tanto el precio de compra, como el de venta y del stock no pueden ser negativos");
-            }
+            if (dto.PrecioCompra < 0 || dto.PrecioVenta < 0)
+                throw new DatosLlegaronErradosException("Los precios no pueden ser negativos.");
 
-                Producto? producto = await _repo.ObtenerPorId(id);
+            Producto? producto = await _repo.ObtenerPorId(id);
+            if (producto is null)
+                throw new RecursoNoExisteException("No existe ningún producto con ese id.");
 
-                if (producto is null)
-                {
-                    throw new RecursoNoExisteException("No existe ningún producto con ese id.");
-                }
+            if (await _categoriaRepository.ObtenerPorId(dto.CategoriaId) is null)
+                throw new RecursoNoExisteException("La categoría seleccionada no existe.");
 
-                if (producto.Nombre != dto.Nombre && await _repo.ExistePorNombre(producto.Nombre))
-                {
-                    throw new RecursoExistenteException("Ya existe un producto con ese nombre.");
-                }
-                
+            string nombre = dto.Nombre.Trim();
+            bool cambioElNombre = !string.Equals(producto.Nombre, nombre, StringComparison.OrdinalIgnoreCase);
+            if (cambioElNombre && await _repo.ExistePorNombre(nombre))
+                throw new RecursoExistenteException("Ya existe un producto con ese nombre.");
 
-                producto.Nombre = dto.Nombre;
-                producto.PrecioCompra = dto.PrecioCompra;
-                producto.PrecioVenta = dto.PrecioVenta;
-                producto.Stock = dto.Stock;
+            producto.Nombre = nombre;
+            producto.PrecioCompra = dto.PrecioCompra;
+            producto.PrecioVenta = dto.PrecioVenta;
+            producto.CategoriaId = dto.CategoriaId;
 
-                await _repo.Actualizar(producto);
+            await _repo.Actualizar(producto);
         }
 
         public async Task Eliminar(int id)
         {
+            Producto? producto = await _repo.ObtenerPorId(id);
+            if (producto is null)
+                throw new RecursoNoExisteException("No existe ningún producto con ese id.");
 
-                Producto? producto = await _repo.ObtenerPorId(id);
-
-                if (producto is null)
-                {
-                    throw new RecursoNoExisteException("No existe ningún producto con ese id.");
-                }
-
-                await _repo.Eliminar(producto);
+            producto.Eliminado = true;           // borrado lógico: los ingresos históricos siguen intactos
+            await _repo.Actualizar(producto);
         }
     }
 }

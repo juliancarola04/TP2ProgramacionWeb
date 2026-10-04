@@ -6,7 +6,8 @@ public record ProductoListadoResponse(
     decimal PrecioCompra,
     decimal PrecioVenta,
     int Stock,
-    int CategoriaId);
+    int CategoriaId,
+    string CategoriaNombre);
     
 public record ProductoResponse(
     int Id,
