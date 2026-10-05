@@ -1,5 +1,68 @@
 @page "/login"
+@layout AuthLayout
+@using TP2ProgramacionWeb.Frontend.DTO.Auth.Request
+@using TP2ProgramacionWeb.Frontend.DTO.Auth.Response
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject LoginService LoginService
+@inject AuthStateProvider AuthStateProvider
+@inject ManejadorErroresUi Errores
+@inject NavigationManager NavigationManager
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<EditForm Model="@_viewModel" OnValidSubmit="Ingresar" Class="mx-auto" style="width: 100%; max-width: 420px;">
+    <DataAnnotationsValidator />
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h5" Class="mb-4">Iniciar sesión</MudText>
+
+            <MudTextField Label="Usuario" @bind-Value="_viewModel.Username" AutoFocus="true" />
+            <MudTextField Label="Contraseña" Class="mt-3" InputType="InputType.Password"
+                          @bind-Value="_viewModel.Password" />
+
+            <MudText Color="Color.Error" Class="mt-3">
+            <ValidationSummary/>
+            </MudText>
+        </MudCardContent>
+
+        <MudCardActions Class="flex-column align-stretch px-4 pb-4">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@_cargando">
+                Ingresar
+            </MudButton>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-3">
+                ¿No tenés cuenta? <MudLink Href="/registro">Registrate</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</EditForm>
 
 @code {
-    
+    private LoginViewModel _viewModel = new();
+    private bool _cargando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (estado.User.Identity?.IsAuthenticated == true)
+            NavigationManager.NavigateTo("/", replace: true);
+    }
+
+    private async Task Ingresar()
+    {
+        _cargando = true;
+
+        var request = new LoginRequest(_viewModel.Username, _viewModel.Password);
+        LoginResponse? respuesta = await Errores.ObtenerAsync(() => LoginService.Login(request));
+
+        _cargando = false;
+
+        if (respuesta is null)
+            return; // el motivo ya se mostró en el Snackbar
+
+        await AuthStateProvider.IniciarSesion(respuesta.Id, respuesta.Username, respuesta.Rol);
+        NavigationManager.NavigateTo("/");
+    }
 }

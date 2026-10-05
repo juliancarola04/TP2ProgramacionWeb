@@ -1,5 +1,6 @@
 ﻿namespace TP2ProgramacionWeb.Frontend.DTO.Auth.Response;
 
 public record RegisterResponse(
-    string? Id,
-    string? Ro);
+    int Id,
+    string Username,
+    string Rol);
