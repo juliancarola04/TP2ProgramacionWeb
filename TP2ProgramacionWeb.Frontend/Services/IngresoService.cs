@@ -86,77 +86,74 @@ public class IngresoService
 
     public async Task<IngresoResponse> Crear(CrearIngresoRequest dto, int usuarioId)
     {
+        // 1) Validaciones de forma (no tocan la base)
         if (dto.Items is null || dto.Items.Count == 0)
-        {
             throw new DatosLlegaronErradosException("El ingreso debe tener al menos un producto.");
-        }
 
         if (dto.Items.Any(i => i.Cantidad <= 0))
-        {
             throw new DatosLlegaronErradosException("La cantidad de cada producto debe ser mayor a cero.");
-        }
 
         if (dto.Items.Any(i => i.PrecioUnitario <= 0))
-        {
             throw new DatosLlegaronErradosException("El precio unitario de cada producto debe ser mayor a cero.");
-        }
 
         bool hayDuplicados = dto.Items
             .GroupBy(i => i.ProductoId)
             .Any(g => g.Count() > 1);
 
         if (hayDuplicados)
-        {
             throw new DatosLlegaronErradosException(
                 "Hay un producto repetido en la lista de items. Combiná las cantidades en un solo ítem antes de enviar.");
+
+        // 2) Validaciones de existencia: se carga todo, sin modificar nada todavía
+        Proveedor? proveedor = await _proveedorRepo.BuscarPorId(dto.ProveedorId);
+        if (proveedor is null)
+            throw new RecursoNoExisteException("No existe ningún proveedor con ese id.");
+
+        List<(Producto Producto, CrearIngresoItemRequest Item)> items = new();
+
+        foreach (CrearIngresoItemRequest item in dto.Items)
+        {
+            Producto? producto = await _productoRepo.ObtenerPorId(item.ProductoId);
+
+            if (producto is null)
+                throw new RecursoNoExisteException($"No existe ningún producto con id {item.ProductoId}.");
+
+            items.Add((producto, item));
         }
-            Proveedor? proveedor = await _proveedorRepo.BuscarPorId(dto.ProveedorId);
-            if (proveedor is null)
+
+        // 3) Recién acá se modifica el stock y el costo vigente
+        List<DetalleIngreso> detalles = new();
+        decimal total = 0;
+
+        foreach ((Producto producto, CrearIngresoItemRequest item) in items)
+        {
+            producto.Stock += item.Cantidad;
+            producto.PrecioCompra = item.PrecioUnitario; // costo vigente en el catálogo
+
+            total += item.PrecioUnitario * item.Cantidad;
+
+            detalles.Add(new DetalleIngreso
             {
-                throw new RecursoNoExisteException("No existe ningún proveedor con ese id.");
-            }
+                ProductoId = producto.Id,
+                Cantidad = item.Cantidad,
+                PrecioUnitario = item.PrecioUnitario
+            });
+        }
 
-            List<DetalleIngreso> detalles = new List<DetalleIngreso>();
-            decimal total = 0;
+        Ingreso ingreso = new Ingreso
+        {
+            Fecha = DateTime.UtcNow,
+            Total = total,
+            ProveedorId = dto.ProveedorId,
+            UsuarioId = usuarioId,
+            DetallesIngresos = detalles
+        };
 
-            foreach (CrearIngresoItemRequest item in dto.Items)
-            {
-                Producto? producto = await _productoRepo.ObtenerPorId(item.ProductoId);
+        await _repo.Crear(ingreso); // si falla, el repo limpia el ChangeTracker (ver mensaje anterior)
 
-                if (producto is null)
-                {
-                    throw new RecursoNoExisteException($"No existe ningún producto con id {item.ProductoId}.");
-                }
-
-                producto.Stock += item.Cantidad;
-                producto.PrecioCompra = item.PrecioUnitario; // actualiza el costo vigente en el catálogo
-
-                decimal subtotal = item.PrecioUnitario * item.Cantidad;
-                total += subtotal;
-
-                detalles.Add(new DetalleIngreso
-                {
-                    ProductoId = producto.Id,
-                    Cantidad = item.Cantidad,
-                    PrecioUnitario = item.PrecioUnitario
-                });
-            }
-
-            Ingreso ingreso = new Ingreso
-            {
-                Fecha = DateTime.UtcNow,
-                Total = total,
-                ProveedorId = dto.ProveedorId,
-                UsuarioId = usuarioId,
-                DetallesIngresos = detalles
-            };
-
-            await _repo.Crear(ingreso);
-
-            Ingreso? ingresoCompleto = await _repo.ObtenerPorId(ingreso.Id);
-            return MapearADto(ingresoCompleto!);
+        Ingreso? ingresoCompleto = await _repo.ObtenerPorId(ingreso.Id);
+        return MapearADto(ingresoCompleto!);
     }
-
     public async Task Anular(int id)
     {
 

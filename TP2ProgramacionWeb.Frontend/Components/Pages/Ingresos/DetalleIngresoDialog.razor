@@ -1,0 +1,75 @@
+﻿@using TP2ProgramacionWeb.Frontend.DTO.Ingreso.Response
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@inject IngresoService IngresoService
+@inject ManejadorErroresUi Errores
+
+<MudDialog>
+    <DialogContent>
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (_ingreso is null)
+        {
+            <MudText>No se pudo cargar el ingreso.</MudText>
+        }
+        else
+        {
+            <MudStack Spacing="1" Class="mb-3">
+                <MudText><b>Fecha:</b> @_ingreso.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                <MudText><b>Proveedor:</b> @_ingreso.ProveedorRazonSocial</MudText>
+                <MudText><b>Registrado por:</b> @_ingreso.UsuarioUsername</MudText>
+                <div>
+                    @if (_ingreso.Anulado)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Anulado</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Vigente</MudChip>
+                    }
+                </div>
+            </MudStack>
+
+            <MudTable Items="_ingreso.Detalles" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Producto</MudTh>
+                    <MudTh Style="text-align: right;">Cantidad</MudTh>
+                    <MudTh Style="text-align: right;">Precio unitario</MudTh>
+                    <MudTh Style="text-align: right;">Subtotal</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Producto">@context.ProductoNombre</MudTd>
+                    <MudTd DataLabel="Cantidad" Style="text-align: right;">@context.Cantidad</MudTd>
+                    <MudTd DataLabel="Precio unitario" Style="text-align: right;">$ @context.PrecioUnitario.ToString("N2")</MudTd>
+                    <MudTd DataLabel="Subtotal" Style="text-align: right;">$ @context.Subtotal.ToString("N2")</MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudText Typo="Typo.h6" Align="Align.Right" Class="mt-3">
+                Total: $ @_ingreso.Total.ToString("N2")
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cerrar">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public int IngresoId { get; set; }
+
+    private IngresoResponse? _ingreso;
+    private bool _cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ingreso = await Errores.ObtenerAsync(() => IngresoService.ObtenerPorId(IngresoId));
+        _cargando = false;
+    }
+
+    private void Cerrar() => MudDialog.Close();
+}

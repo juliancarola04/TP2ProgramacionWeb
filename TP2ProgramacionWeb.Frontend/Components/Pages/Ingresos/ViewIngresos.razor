@@ -1,0 +1,187 @@
+﻿@page "/ingresos/view"
+@using TP2ProgramacionWeb.Frontend.DTO.Ingreso.Response
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Ingreso
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Proveedor
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@inject IngresoService IngresoService
+@inject ProveedorService ProveedorService
+@inject ManejadorErroresUi Errores
+@inject IDialogService DialogService
+
+<PageTitle>Ver ingresos</PageTitle>
+
+<div class="d-flex justify-content-center align-center" style="min-height: 75vh;">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudDataGrid @ref="_dataGrid"
+                     T="IngresoListadoResponse"
+                     ServerData="CargarDatos"
+                     ReadOnly="true"
+                     SortMode="SortMode.None"
+                     Bordered="true"
+                     Dense="true"
+                     Hover="true">
+
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Ingresos</MudText>
+                <MudSpacer />
+                <MudTextField T="string" Placeholder="Buscar por proveedor" Class="mr-3"
+                              @bind-Value="_buscar"
+                              Immediate="true" DebounceInterval="400"
+                              OnDebounceIntervalElapsed="AlBuscar"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              Margin="Margin.Dense" Variant="Variant.Outlined" />
+                <MudSelect T="int?" Label="Proveedor" Clearable="true" Class="mr-3" Style="min-width: 200px;"
+                           @bind-Value="_filtroProveedorId" @bind-Value:after="AlCambiarFiltro"
+                           Margin="Margin.Dense" Variant="Variant.Outlined">
+                    @foreach (OpcionProveedor proveedor in _proveedores)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)proveedor.Id)">@proveedor.RazonSocial</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="bool?" Label="Estado" Clearable="true" Style="min-width: 150px;"
+                           @bind-Value="_filtroAnulado" @bind-Value:after="AlCambiarFiltro"
+                           Margin="Margin.Dense" Variant="Variant.Outlined">
+                    <MudSelectItem T="bool?" Value="@((bool?)false)">Vigentes</MudSelectItem>
+                    <MudSelectItem T="bool?" Value="@((bool?)true)">Anulados</MudSelectItem>
+                </MudSelect>
+            </ToolBarContent>
+
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Id" />
+
+                <TemplateColumn Title="Fecha">
+                    <CellTemplate>
+                        @context.Item.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <PropertyColumn Property="x => x.ProveedorRazonSocial" Title="Proveedor" />
+
+                <PropertyColumn Property="x => x.Total" Title="Total" Format="N2" />
+
+                <TemplateColumn Title="Estado">
+                    <CellTemplate>
+                        @if (context.Item.Anulado)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Anulado</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Vigente</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn>
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                            <MudIconButton Size="Size.Small"
+                                           Icon="@Icons.Material.Outlined.Visibility"
+                                           aria-label="Ver detalle"
+                                           OnClick="@(() => VerDetalle(context.Item))" />
+                            <MudIconButton Size="Size.Small"
+                                           Icon="@Icons.Material.Outlined.Block"
+                                           Disabled="@context.Item.Anulado"
+                                           aria-label="Anular ingreso"
+                                           OnClick="@(() => AnularIngreso(context.Item))" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="IngresoListadoResponse" PageSizeOptions="@(new int[] { 10, 25, 50 })" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudContainer>
+</div>
+
+@code {
+    private sealed record OpcionProveedor(int Id, string RazonSocial);
+
+    private MudDataGrid<IngresoListadoResponse> _dataGrid = null!;
+    private List<OpcionProveedor> _proveedores = [];
+
+    private string? _buscar;
+    private int? _filtroProveedorId;
+    private bool? _filtroAnulado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var parametros = new ParametroPaginacionProveedorRequest
+        {
+            NumeroPagina = 1,
+            TamanoPagina = 50
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => ProveedorService.ObtenerTodos(parametros));
+        _proveedores = respuesta?.Datos
+            .Select(p => new OpcionProveedor(p.Id, p.RazonSocial))
+            .ToList() ?? [];
+    }
+
+    private async Task AlBuscar(string _) => await RecargarDesdePrimeraPagina();
+
+    private async Task AlCambiarFiltro() => await RecargarDesdePrimeraPagina();
+
+    private async Task RecargarDesdePrimeraPagina()
+    {
+        //await _dataGrid.NavigateTo(Page.First);
+        await _dataGrid.ReloadServerData();
+    }
+
+    private async Task VerDetalle(IngresoListadoResponse item)
+    {
+        var parametros = new DialogParameters<DetalleIngresoDialog>
+        {
+            { x => x.IngresoId, item.Id }
+        };
+
+        var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+
+        await DialogService.ShowAsync<DetalleIngresoDialog>($"Ingreso #{item.Id}", parametros, opciones);
+    }
+
+    private async Task AnularIngreso(IngresoListadoResponse item)
+    {
+        bool? confirmado = await DialogService.ShowMessageBoxAsync(
+            $"Anular ingreso #{item.Id}",
+            "Se va a descontar del stock lo que sumó este ingreso. Esta acción no se puede deshacer.",
+            yesText: "Anular",
+            cancelText: "Cancelar");
+
+        if (confirmado != true)
+            return;
+
+        bool seAnulo = await Errores.EjecutarAsync(
+            () => IngresoService.Anular(item.Id), $"Ingreso #{item.Id} anulado.");
+
+        if (seAnulo)
+            await _dataGrid.ReloadServerData();
+    }
+
+    private async Task<GridData<IngresoListadoResponse>> CargarDatos(
+        GridState<IngresoListadoResponse> estado, CancellationToken cancellationToken)
+    {
+        var parametros = new ParametroPaginacionIngresoRequest
+        {
+            NumeroPagina = estado.Page + 1,
+            TamanoPagina = estado.PageSize,
+            Buscar = _buscar,
+            ProveedorId = _filtroProveedorId,
+            Anulado = _filtroAnulado
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => IngresoService.ObtenerTodos(parametros));
+
+        if (respuesta is null)
+            return new GridData<IngresoListadoResponse> { Items = [], TotalItems = 0 };
+
+        return new GridData<IngresoListadoResponse>
+        {
+            Items = respuesta.Datos,
+            TotalItems = respuesta.TotalRegistros
+        };
+    }
+}

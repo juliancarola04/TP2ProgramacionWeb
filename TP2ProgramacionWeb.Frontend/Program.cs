@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
@@ -47,7 +48,13 @@ try
     builder.Services.AddScoped<ProveedorService>();
     builder.Services.AddScoped<IngresoService>();
     builder.Services.AddScoped<ManejadorErroresUi>();
+    builder.Services.AddScoped<AuthStateProvider>();
+    builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateProvider>());
 
+    builder.Services.AddScoped<LoginService>();
+    builder.Services.AddScoped<RegisterService>();
+
+    builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
     builder.Services.AddScoped<IProductoRepository, ProductoRepositoryPsqlEF>();
     builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
     builder.Services.AddScoped<IProveedorRepository, ProveedorRepositoryPsqlEF>();

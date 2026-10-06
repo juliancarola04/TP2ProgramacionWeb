@@ -18,7 +18,7 @@ public class IngresoRepositoryPsqlEF : IIngresoRepository
 
     public async Task<PaginadoResponse<Ingreso>> ObtenerTodos(IngresoQueryParametros parametros)
     {
-        IQueryable<Ingreso> query = _dataContext.Ingresos
+        IQueryable<Ingreso> query = _dataContext.Ingresos.IgnoreQueryFilters()
             .Include(i => i.Proveedor)
             .AsNoTracking();
 
@@ -53,7 +53,7 @@ public class IngresoRepositoryPsqlEF : IIngresoRepository
 
     public async Task<Ingreso?> ObtenerPorId(int id)
     {
-        return await _dataContext.Ingresos
+        return await _dataContext.Ingresos.IgnoreQueryFilters()
             .Include(i => i.Proveedor)
             .Include(i => i.Usuario)
             .Include(i => i.DetallesIngresos)
@@ -65,7 +65,7 @@ public class IngresoRepositoryPsqlEF : IIngresoRepository
     // Trackeada: la vamos a modificar (Anulado + Stock de cada Producto).
     public async Task<Ingreso?> ObtenerParaAnular(int id)
     {
-        return await _dataContext.Ingresos
+        return await _dataContext.Ingresos.IgnoreQueryFilters()
             .Include(i => i.DetallesIngresos)
                 .ThenInclude(d => d.Producto)
             .FirstOrDefaultAsync(i => i.Id == id);
@@ -73,12 +73,21 @@ public class IngresoRepositoryPsqlEF : IIngresoRepository
 
     public async Task Crear(Ingreso ingreso)
     {
-        _dataContext.Ingresos.Add(ingreso);
-        await _dataContext.SaveChangesAsync();
+        try
+        {
+            _dataContext.Ingresos.Add(ingreso);
+            await _dataContext.SaveChangesAsync();
+        }
+        catch
+        {
+            _dataContext.ChangeTracker.Clear();
+            throw;
+        }
     }
 
     public async Task GuardarCambios()
     {
-        await _dataContext.SaveChangesAsync();
+        try { await _dataContext.SaveChangesAsync(); }
+        catch { _dataContext.ChangeTracker.Clear(); throw; }
     }
 }

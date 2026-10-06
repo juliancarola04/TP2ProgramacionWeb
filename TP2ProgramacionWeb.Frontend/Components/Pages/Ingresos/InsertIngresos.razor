@@ -1,0 +1,213 @@
+﻿@page "/ingresos/insert"
+@using TP2ProgramacionWeb.Frontend.DTO.Ingreso.Request
+@using TP2ProgramacionWeb.Frontend.DTO.Ingreso.Response
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Producto
+@using TP2ProgramacionWeb.Frontend.DTO.Paginado.Request.Proveedor
+@using TP2ProgramacionWeb.Frontend.DTO.Producto.Response
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@inject IngresoService IngresoService
+@inject ProductoService ProductoService
+@inject ProveedorService ProveedorService
+@inject ManejadorErroresUi Errores
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>Registrar ingreso</PageTitle>
+
+<MudOverlay @bind-Visible="_guardando" DarkBackground="true">
+    <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+</MudOverlay>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Registrar ingreso de stock</MudText>
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            Al guardar se suma la cantidad al stock de cada producto y su precio de compra pasa a ser el precio unitario ingresado.
+        </MudAlert>
+
+        <MudSelect T="int?" Label="Proveedor" @bind-Value="_proveedorId"
+                   Variant="Variant.Outlined" Required="true"
+                   Disabled="@(_proveedores.Count == 0)">
+            @foreach (OpcionProveedor proveedor in _proveedores)
+            {
+                <MudSelectItem T="int?" Value="@((int?)proveedor.Id)">@proveedor.RazonSocial</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Productos</MudText>
+
+        @foreach (LineaIngreso linea in _lineas)
+        {
+            <MudGrid Class="align-center mb-1" @key="linea">
+                <MudItem xs="12" md="5">
+                    <MudAutocomplete T="ProductoListadoResponse" Label="Producto"
+                                     Value="linea.Producto"
+                                     ValueChanged="@((ProductoListadoResponse p) => AlElegirProducto(linea, p))"
+                                     SearchFunc="BuscarProductos"
+                                     ToStringFunc="@(p => p?.Nombre)"
+                                     MinCharacters="0" OpenOnFocus="true"
+                                     CoerceText="true" ResetValueOnEmptyText="true"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     HelperText="@(linea.Producto is null ? null : $"Stock actual: {linea.Producto.Stock}")" />
+                </MudItem>
+                <MudItem xs="4" md="2">
+                    <MudNumericField T="int" Label="Cantidad" @bind-Value="linea.Cantidad"
+                                     Min="1" Immediate="true"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="4" md="2">
+                    <MudNumericField T="decimal" Label="Precio unitario" @bind-Value="linea.PrecioUnitario"
+                                     Min="0" Immediate="true" HideSpinButtons="true"
+                                     Adornment="Adornment.Start" AdornmentText="$"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="3" md="2">
+                    <MudText Align="Align.Right">$ @((linea.Cantidad * linea.PrecioUnitario).ToString("N2"))</MudText>
+                </MudItem>
+                <MudItem xs="1" md="1" Class="d-flex justify-end">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                                   Disabled="@(_lineas.Count == 1)"
+                                   aria-label="Quitar producto"
+                                   OnClick="@(() => QuitarLinea(linea))" />
+                </MudItem>
+            </MudGrid>
+        }
+
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-2"
+                   StartIcon="@Icons.Material.Filled.Add" OnClick="AgregarLinea">
+            Agregar producto
+        </MudButton>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6" Align="Align.Right">Total: $ @Total.ToString("N2")</MudText>
+
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+            <MudButton Variant="Variant.Text" Href="/ingresos/view">Cancelar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(_guardando)"
+                       OnClick="Guardar">
+                Guardar ingreso
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> EstadoAutenticacion { get; set; } = null!;
+    private sealed record OpcionProveedor(int Id, string RazonSocial);
+
+    private sealed class LineaIngreso
+    {
+        public ProductoListadoResponse? Producto { get; set; }
+        public int Cantidad { get; set; } = 1;
+        public decimal PrecioUnitario { get; set; }
+    }
+
+    private List<OpcionProveedor> _proveedores = [];
+    private List<LineaIngreso> _lineas = [new()];
+    private int? _proveedorId;
+    private bool _guardando;
+
+    private decimal Total => _lineas.Sum(l => l.Cantidad * l.PrecioUnitario);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var parametros = new ParametroPaginacionProveedorRequest
+        {
+            NumeroPagina = 1,
+            TamanoPagina = 50 // máximo que permite el servicio
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => ProveedorService.ObtenerTodos(parametros));
+        _proveedores = respuesta?.Datos
+            .Select(p => new OpcionProveedor(p.Id, p.RazonSocial))
+            .ToList() ?? [];
+    }
+
+    private void AgregarLinea() => _lineas.Add(new LineaIngreso());
+
+    private void QuitarLinea(LineaIngreso linea)
+    {
+        if (_lineas.Count > 1)
+            _lineas.Remove(linea);
+    }
+
+    private void AlElegirProducto(LineaIngreso linea, ProductoListadoResponse? producto)
+    {
+        linea.Producto = producto;
+
+        // Se sugiere el último costo; el usuario puede cambiarlo.
+        if (producto is not null)
+            linea.PrecioUnitario = producto.PrecioCompra;
+    }
+
+    private async Task<IEnumerable<ProductoListadoResponse>> BuscarProductos(string? texto, CancellationToken cancellationToken)
+    {
+        var parametros = new ParametroPaginacionProductoRequest
+        {
+            NumeroPagina = 1,
+            TamanoPagina = 10,
+            Buscar = texto,
+            OrdenarPor = "nombre",
+            Direccion = "asc"
+        };
+
+        var respuesta = await Errores.ObtenerAsync(() => ProductoService.ObtenerTodos(parametros));
+        if (respuesta is null)
+            return [];
+
+        // No se ofrecen productos que ya están en otra línea (el servicio rechaza duplicados).
+        HashSet<int> yaElegidos = _lineas
+            .Where(l => l.Producto is not null)
+            .Select(l => l.Producto!.Id)
+            .ToHashSet();
+
+        return respuesta.Datos.Where(p => !yaElegidos.Contains(p.Id)).ToList();
+    }
+
+    private string? Validar()
+    {
+        if (_proveedorId is null) return "Elegí un proveedor.";
+        if (_lineas.Count == 0) return "Agregá al menos un producto.";
+        if (_lineas.Any(l => l.Producto is null)) return "Hay líneas sin producto elegido.";
+        if (_lineas.Any(l => l.Cantidad <= 0)) return "La cantidad de cada producto debe ser mayor a cero.";
+        if (_lineas.Any(l => l.PrecioUnitario <= 0)) return "El precio unitario de cada producto debe ser mayor a cero.";
+        return null;
+    }
+
+    private async Task Guardar()
+    {
+        string? error = Validar();
+        if (error is not null)
+        {
+            Snackbar.Add(error, Severity.Warning);
+            return;
+        }
+
+        AuthenticationState estado = await EstadoAutenticacion;
+        if (!int.TryParse(estado.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out int usuarioId))
+        {
+            Snackbar.Add("No se pudo identificar al usuario. Volvé a iniciar sesión.", Severity.Warning);
+            return;
+        }
+
+        var request = new CrearIngresoRequest(
+            _proveedorId!.Value,
+            _lineas
+                .Select(l => new CrearIngresoItemRequest(l.Producto!.Id, l.Cantidad, l.PrecioUnitario))
+                .ToList());
+
+        _guardando = true;
+        IngresoResponse? ingreso = await Errores.ObtenerAsync(() => IngresoService.Crear(request, usuarioId));
+        _guardando = false;
+
+        if (ingreso is null)
+            return; // el error ya se mostró en el Snackbar
+
+        Snackbar.Add($"Ingreso #{ingreso.Id} registrado. Total: $ {ingreso.Total:N2}", Severity.Success);
+        NavigationManager.NavigateTo("/ingresos/view");
+    }
+}

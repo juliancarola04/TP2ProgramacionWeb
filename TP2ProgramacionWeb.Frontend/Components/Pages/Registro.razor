@@ -1,0 +1,64 @@
+﻿@page "/registro"
+@layout AuthLayout
+@using TP2ProgramacionWeb.Frontend.DTO.Auth.Request
+@using TP2ProgramacionWeb.Frontend.DTO.Auth.Response
+@using TP2ProgramacionWeb.Frontend.Services
+@using TP2ProgramacionWeb.Frontend.Utilidades
+@using TP2ProgramacionWeb.Frontend.Viewmodel
+@inject RegisterService RegisterService
+@inject AuthStateProvider AuthStateProvider
+@inject ManejadorErroresUi Errores
+@inject NavigationManager NavigationManager
+
+<PageTitle>Registrarse</PageTitle>
+
+<EditForm Model="@_viewModel" OnValidSubmit="Registrarse" Class="mx-auto" style="width: 100%; max-width: 420px;">
+    <DataAnnotationsValidator />
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h5" Class="mb-4">Crear cuenta</MudText>
+
+            <MudTextField Label="Usuario" HelperText="Máx. 30 caracteres" MaxLength="30"
+                          @bind-Value="_viewModel.Username" For="@(() => _viewModel.Username)" />
+            <MudTextField Label="E-Mail" Class="mt-3" InputType="InputType.Email"
+                          @bind-Value="_viewModel.Email" For="@(() => _viewModel.Email)" />
+            <MudTextField Label="Contraseña" Class="mt-3" InputType="InputType.Password"
+                          HelperText="Mínimo 6 caracteres"
+                          @bind-Value="_viewModel.Password" For="@(() => _viewModel.Password)" />
+            <MudTextField Label="Repetir contraseña" Class="mt-3" InputType="InputType.Password"
+                          @bind-Value="_viewModel.ConfirmarPassword" For="@(() => _viewModel.ConfirmarPassword)" />
+        </MudCardContent>
+
+        <MudCardActions Class="flex-column align-stretch px-4 pb-4">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@_cargando">
+                Registrarse
+            </MudButton>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-3">
+                ¿Ya tenés cuenta? <MudLink Href="/login">Iniciá sesión</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</EditForm>
+
+@code {
+    private RegisterViewModel _viewModel = new();
+    private bool _cargando;
+
+    private async Task Registrarse()
+    {
+        _cargando = true;
+
+        var request = new RegisterRequest(_viewModel.Username, _viewModel.Password, _viewModel.Email);
+        RegisterResponse? respuesta = await Errores.ObtenerAsync(() => RegisterService.Registrarse(request));
+
+        _cargando = false;
+
+        if (respuesta is null)
+            return;
+
+        // Igual que en la API: al registrarse queda con la sesión iniciada.
+        await AuthStateProvider.IniciarSesion(respuesta.Id, respuesta.Username, respuesta.Rol);
+        NavigationManager.NavigateTo("/");
+    }
+}
